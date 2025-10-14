@@ -9,4 +9,4 @@ select
     st_makepoint(f.value:geometry:coordinates[0], f.value:geometry:coordinates[1]) as coords,
     hc.DATA
 from {{ source('raw_data', 'hawker_centres') }} hc,
-lateral flatten(input => hc.DATA:features) f;
+lateral flatten(input => hc.DATA:features) f

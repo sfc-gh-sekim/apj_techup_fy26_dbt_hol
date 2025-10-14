@@ -20,13 +20,13 @@ models:
       +materialized: dynamic_table
       +snowflake_warehouse: TECHUP25_WH
       +on_configuration_change: apply
-      #+target_lag: downstream
+      +target_lag: downstream
       +refresh_mode: INCREMENTAL
       +initialize: ON_CREATE
     gold:
       +materialized: dynamic_table
       +snowflake_warehouse: TECHUP25_WH
       +on_configuration_change: apply 
-      #+target_lag: '24 hours'
+      +target_lag: '24 HOURS'
       +refresh_mode: INCREMENTAL
       +initialize: ON_CREATE

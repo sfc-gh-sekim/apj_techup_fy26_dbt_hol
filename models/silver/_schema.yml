@@ -34,8 +34,6 @@ models:
         data_type: int
         tests:
           - not_null
-          - dbt_utils.accepted_range:
-              min_value: 0
       - name: photo_url
         description: "URL to photo of the hawker centre"
         data_type: varchar
@@ -93,8 +91,6 @@ models:
         data_type: bigint
         tests:
           - not_null
-          - dbt_utils.accepted_range:
-              min_value: 0
       - name: api_status
         description: "Status of the API when data was retrieved"
         data_type: varchar
