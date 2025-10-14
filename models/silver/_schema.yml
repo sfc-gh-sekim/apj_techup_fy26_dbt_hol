@@ -1,0 +1,162 @@
+version: 2
+
+models:
+  - name: hawker_centres
+    description: "Cleaned and structured hawker centre data with extracted location and facility information"
+    meta:
+      layer: "silver"
+      data_source: "Singapore data.gov.sg hawker centres dataset"
+      dataset_url: "https://data.gov.sg/datasets/d_4a086da0a5553be1d89383cd90d07ecd/view"
+      transformation: "Flattened GeoJSON features with parsed properties"
+    columns:
+      - name: objectid
+        description: "Unique object identifier for the hawker centre"
+        data_type: varchar
+        tests:
+          - not_null
+          - unique
+      - name: name
+        description: "Name of the hawker centre"
+        data_type: varchar
+        tests:
+          - not_null
+      - name: address
+        description: "Full address of the hawker centre"
+        data_type: varchar
+      - name: street_name
+        description: "Street name component of the address"
+        data_type: varchar
+      - name: postcode
+        description: "Postal code of the hawker centre"
+        data_type: varchar
+      - name: num_cooked_food_stalls
+        description: "Number of cooked food stalls in the hawker centre"
+        data_type: int
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: photo_url
+        description: "URL to photo of the hawker centre"
+        data_type: varchar
+      - name: coords
+        description: "Geographic coordinates as Snowflake GEOGRAPHY point"
+        data_type: geography
+        tests:
+          - not_null
+      - name: data
+        description: "Original raw JSON data for reference"
+        data_type: variant
+
+  - name: mrt_station_exits
+    description: "MRT station exit information with parsed location and exit details"
+    meta:
+      layer: "silver"
+      data_source: "Singapore LTA MRT station exit GEOJSON dataset"
+      dataset_url: "https://data.gov.sg/datasets/d_b39d3a0871985372d7e1637193335da5/view"
+      transformation: "HTML description parsed using regex, coordinates extracted"
+    columns:
+      - name: station_name
+        description: "Name of the MRT/LRT station"
+        data_type: varchar
+        tests:
+          - not_null
+      - name: exit_code
+        description: "Exit identifier (e.g., Exit A, Exit B)"
+        data_type: varchar
+        tests:
+          - not_null
+      - name: coords
+        description: "Geographic coordinates as Snowflake GEOGRAPHY point"
+        data_type: geography
+        tests:
+          - not_null
+      - name: raw_description_html
+        description: "Original HTML description containing all attributes"
+        data_type: varchar
+
+  - name: taxi_availability_metadata
+    description: "Metadata and summary information from taxi availability data"
+    meta:
+      layer: "silver"
+      data_source: "Singapore LTA taxi availability real-time API"
+      dataset_url: "https://data.gov.sg/datasets/d_e25662f1a062dd046453926aa284ba64/view"
+      transformation: "Extracted timestamp, count, and API status information"
+    columns:
+      - name: timestamp
+        description: "Timestamp when taxi data was captured"
+        data_type: timestamp
+        tests:
+          - not_null
+      - name: taxi_count
+        description: "Total number of available taxis at the timestamp"
+        data_type: bigint
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: api_status
+        description: "Status of the API when data was retrieved"
+        data_type: varchar
+
+  - name: taxi_availability
+    description: "Individual taxi locations with coordinates and timestamp"
+    meta:
+      layer: "silver"
+      data_source: "Singapore LTA taxi availability real-time API"
+      dataset_url: "https://data.gov.sg/datasets/d_e25662f1a062dd046453926aa284ba64/view"
+      transformation: "Flattened coordinate pairs into individual taxi records"
+    columns:
+      - name: timestamp
+        description: "Timestamp when taxi data was captured"
+        data_type: timestamp
+        tests:
+          - not_null
+      - name: taxi_coords
+        description: "Geographic coordinates of individual taxi as Snowflake GEOGRAPHY point"
+        data_type: geography
+        tests:
+          - not_null
+
+  - name: tourist_attractions
+    description: "Tourist attraction information with parsed details and location data"
+    meta:
+      layer: "silver"
+      data_source: "Singapore tourism board attractions dataset"
+      dataset_url: "https://data.gov.sg/datasets/d_0f2f47515425404e6c9d2a040dd87354/view"
+      transformation: "HTML description parsed using regex to extract structured attributes"
+    columns:
+      - name: url_path
+        description: "URL path to the attraction's webpage"
+        data_type: varchar
+      - name: address
+        description: "Physical address of the tourist attraction"
+        data_type: varchar
+      - name: page_title
+        description: "Title/name of the tourist attraction"
+        data_type: varchar
+        tests:
+          - not_null
+      - name: image_path
+        description: "URL path to the attraction's main image"
+        data_type: varchar
+      - name: photo_credits
+        description: "Photo credit information"
+        data_type: varchar
+      - name: overview
+        description: "Description and overview of the attraction"
+        data_type: varchar
+      - name: external_link
+        description: "External website link for the attraction"
+        data_type: varchar
+      - name: opening_hours
+        description: "Operating hours information"
+        data_type: varchar
+      - name: coords
+        description: "Geographic coordinates as Snowflake GEOGRAPHY point"
+        data_type: geography
+        tests:
+          - not_null
+      - name: raw_description_html
+        description: "Original HTML description containing all attributes"
+        data_type: varchar
