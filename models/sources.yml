@@ -1,0 +1,137 @@
+version: 2
+
+sources:
+  - name: raw_data
+    description: "Landing tables for raw data from data.gov.sg APIs"
+    database: APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET
+    schema: RAW_DATA
+    tables:
+      - name: taxi_availability
+        description: "Real-time taxi availability data from Singapore's LTA Datamall, retrieved every minute"
+        meta:
+          data_source: "data.gov.sg Transport API"
+          update_frequency: "Every 1 minute"
+          data_format: "GeoJSON"
+          api_endpoint: "https://api.data.gov.sg/v1/transport/taxi-availability"
+        columns:
+          - name: dataset_id
+            description: "Identifier for the dataset source"
+            data_type: varchar(100)
+          - name: retrieved_at
+            description: "Timestamp when the data was retrieved from the API"
+            data_type: timestamp_ntz
+          - name: data
+            description: "Raw GeoJSON data containing taxi locations and metadata"
+            data_type: variant
+            meta:
+              contains:
+                - "type: GeoJSON type (FeatureCollection)"
+                - "features: Array of taxi location features with coordinates"
+                - "properties: Metadata including timestamp and taxi count"
+          - name: created_at
+            description: "Timestamp when the record was inserted into Snowflake"
+            data_type: timestamp_ntz
+
+      - name: tourist_attractions
+        description: "Tourist attractions in Singapore with location and details, updated daily"
+        meta:
+          data_source: "data.gov.sg Datasets API"
+          update_frequency: "Every 24 hours"
+          data_format: "GeoJSON"
+          dataset_id: "d_0f2f47515425404e6c9d2a040dd87354"
+        columns:
+          - name: dataset_id
+            description: "Identifier for the dataset source"
+            data_type: varchar(100)
+          - name: retrieved_at
+            description: "Timestamp when the data was retrieved from the API"
+            data_type: timestamp_ntz
+          - name: data
+            description: "Raw GeoJSON data containing tourist attraction locations and details"
+            data_type: variant
+            meta:
+              contains:
+                - "type: GeoJSON type"
+                - "features: Array of tourist attraction features"
+                - "properties: Attraction details like name, description, category"
+          - name: created_at
+            description: "Timestamp when the record was inserted into Snowflake"
+            data_type: timestamp_ntz
+
+      - name: hawker_centres
+        description: "Hawker centres locations and information across Singapore, updated daily"
+        meta:
+          data_source: "data.gov.sg Datasets API"
+          update_frequency: "Every 24 hours"
+          data_format: "GeoJSON"
+          dataset_id: "d_4a086da0a5553be1d89383cd90d07ecd"
+        columns:
+          - name: dataset_id
+            description: "Identifier for the dataset source"
+            data_type: varchar(100)
+          - name: retrieved_at
+            description: "Timestamp when the data was retrieved from the API"
+            data_type: timestamp_ntz
+          - name: data
+            description: "Raw GeoJSON data containing hawker centre locations and information"
+            data_type: variant
+            meta:
+              contains:
+                - "type: GeoJSON type"
+                - "features: Array of hawker centre features"
+                - "properties: Centre details like name, address, operating hours"
+          - name: created_at
+            description: "Timestamp when the record was inserted into Snowflake"
+            data_type: timestamp_ntz
+
+      - name: lta_mrt_station_exit
+        description: "MRT station exit information and locations, updated daily"
+        meta:
+          data_source: "data.gov.sg Datasets API"
+          update_frequency: "Every 24 hours"
+          data_format: "GeoJSON"
+          dataset_id: "d_b39d3a0871985372d7e1637193335da5"
+        columns:
+          - name: dataset_id
+            description: "Identifier for the dataset source"
+            data_type: varchar(100)
+          - name: retrieved_at
+            description: "Timestamp when the data was retrieved from the API"
+            data_type: timestamp_ntz
+          - name: data
+            description: "Raw GeoJSON data containing MRT station exit locations and details"
+            data_type: variant
+            meta:
+              contains:
+                - "type: GeoJSON type"
+                - "features: Array of MRT station exit features"
+                - "properties: Exit details like station name, exit number, accessibility"
+          - name: created_at
+            description: "Timestamp when the record was inserted into Snowflake"
+            data_type: timestamp_ntz
+
+      - name: weather_forecast_2h
+        description: "2-hour weather forecast for Singapore, updated every 30 minutes"
+        meta:
+          data_source: "data.gov.sg Datasets API"
+          update_frequency: "Every 30 minutes"
+          data_format: "JSON"
+          dataset_id: "d_3f9e064e25005b0e42969944ccaf2e7a"
+        columns:
+          - name: dataset_id
+            description: "Identifier for the dataset source"
+            data_type: varchar(100)
+          - name: retrieved_at
+            description: "Timestamp when the data was retrieved from the API"
+            data_type: timestamp_ntz
+          - name: data
+            description: "Raw JSON data containing weather forecast information"
+            data_type: variant
+            meta:
+              contains:
+                - "area_metadata: Array of area information"
+                - "items: Array of forecast items with timestamps and forecasts"
+                - "api_info: API status and metadata"
+          - name: created_at
+            description: "Timestamp when the record was inserted into Snowflake"
+            data_type: timestamp_ntz

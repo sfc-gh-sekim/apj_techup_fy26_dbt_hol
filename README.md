@@ -1,2 +1,1 @@
-# apj_techup_fy26_dbt_hol
-TechUp DBT Projects HOL
+# TechUP 2025 - DBT Hands-on Lab - Singapore Taxi Availability App

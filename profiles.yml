@@ -1,0 +1,19 @@
+techup_dbt_hands_on_lab:
+  target: prod
+  outputs:
+    silver:
+      type: snowflake
+      role: TECHUP25_RL
+      warehouse: TECHUP25_WH
+      database: TECHUP25
+      schema: DBT_HOL_SILVER
+      account: ''
+      user: ''
+    gold:
+      type: snowflake
+      role: TECHUP25_RL
+      warehouse: TECHUP25_WH
+      database: TECHUP25
+      schema: DBT_HOL_GOLD
+      account: ''
+      user: ''

@@ -1,0 +1,32 @@
+name: 'techup_dbt_hands_on_lab'
+version: '1.0.0'
+
+profile: 'techup_dbt_hands_on_lab'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:       
+  - "target"
+  - "dbt_packages"
+
+models:
+  techup_dbt_hands_on_lab:
+    silver:
+      +materialized: dynamic_table
+      +snowflake_warehouse: TECHUP25_WH
+      +on_configuration_change: apply
+      #+target_lag: downstream
+      +refresh_mode: INCREMENTAL
+      +initialize: ON_CREATE
+    gold:
+      +materialized: dynamic_table
+      +snowflake_warehouse: TECHUP25_WH
+      +on_configuration_change: apply 
+      #+target_lag: '24 hours'
+      +refresh_mode: INCREMENTAL
+      +initialize: ON_CREATE
