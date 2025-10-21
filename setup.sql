@@ -41,8 +41,17 @@ GRANT CREATE STREAMLIT ON SCHEMA PROJECTS TO DATABASE ROLE DBT_HOL_READER;
 GRANT DATABASE ROLE DBT_HOL_TRANSFORM TO ROLE TECHUP25_RL;
 GRANT DATABASE ROLE DBT_HOL_READER TO ROLE TECHUP25_RL;
 
+-- Create NETWORK RULE for external access integration
+CREATE OR REPLACE NETWORK RULE dbt_network_rule
+  MODE = EGRESS
+  TYPE = HOST_PORT
+  -- Minimal URL allowlist that is required for dbt deps
+  VALUE_LIST = (
+    'hub.getdbt.com',
+    'codeload.github.com'
+    );
 
-CREATE OR REPLACE API INTEGRATION my_git_api_integration
-  API_PROVIDER = git_https_api
-  API_ALLOWED_PREFIXES = ('https://github.com/<GITHUB_USERNAME>')
+-- Create EXTERNAL ACCESS INTEGRATION for dbt access to external dbt package locations
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION dbt_ext_access
+  ALLOWED_NETWORK_RULES = (dbt_network_rule)
   ENABLED = TRUE;
