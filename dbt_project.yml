@@ -18,6 +18,7 @@ models:
   techup_dbt_hands_on_lab:
     silver:
       +materialized: table
+      +schema: DBT_HOL_SILVER
       #+snowflake_warehouse: TECHUP25_WH
       #+on_configuration_change: apply
       #+target_lag: downstream
@@ -25,6 +26,7 @@ models:
       #+initialize: ON_CREATE
     gold:
       +materialized: table
+      +schema: DBT_HOL_GOLD
       #+snowflake_warehouse: TECHUP25_WH
       #+on_configuration_change: apply 
       #+target_lag: '24 HOURS'
