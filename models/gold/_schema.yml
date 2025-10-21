@@ -1,1 +1,113 @@
 version: 2
+
+models:
+  - name: taxi_counts_by_location
+    description: "Historical taxi availability counts by location with proximity analysis using ASOF joins"
+    meta:
+      layer: "gold"
+      data_source: "Combined from all_locations and taxi_availability silver models"
+      transformation: "Temporal ASOF join with spatial distance calculations for historical tracking"
+    columns:
+      - name: location_timestamp_sgt
+        description: "Singapore timezone timestamp when the location data was retrieved"
+        data_type: timestamp
+        tests:
+          - not_null
+      - name: taxi_timestamp_sgt
+        description: "Singapore timezone timestamp when the taxi data was retrieved"
+        data_type: timestamp
+        tests:
+          - not_null
+      - name: location_id
+        description: "Unique identifier for the location"
+        data_type: varchar
+        tests:
+          - not_null
+      - name: location_name
+        description: "Display name of the location"
+        data_type: varchar
+        tests:
+          - not_null
+      - name: location_type
+        description: "Type of location: hawker_centre, mrt_station_exit, or tourist_attraction"
+        data_type: varchar
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['hawker_centre', 'mrt_station_exit', 'tourist_attraction']
+      - name: address
+        description: "Physical address of the location (when available)"
+        data_type: varchar
+      - name: location_description
+        description: "Generated description combining key attributes for the location"
+        data_type: varchar
+      - name: location_coords
+        description: "Geographic coordinates as Snowflake GEOGRAPHY point"
+        data_type: geography
+        tests:
+          - not_null
+      - name: taxi_data_timestamp
+        description: "Original timestamp from the taxi availability API data"
+        data_type: timestamp
+      - name: taxis_within_100m
+        description: "Count of available taxis within 100 meters of the location"
+        data_type: int
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: taxis_within_500m
+        description: "Count of available taxis within 500 meters of the location"
+        data_type: int
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: taxis_within_1km
+        description: "Count of available taxis within 1 kilometer of the location"
+        data_type: int
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: distance_to_nearest_taxi_m
+        description: "Distance in meters to the nearest available taxi"
+        data_type: float
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: taxi_availability_category
+        description: "Categorized taxi availability: High (within 100m), Medium (within 500m), Low (within 1km), None"
+        data_type: varchar
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['High', 'Medium', 'Low', 'None']
+      - name: pct_taxis_within_100m
+        description: "Percentage of total available taxis within 100 meters"
+        data_type: float
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: pct_taxis_within_500m
+        description: "Percentage of total available taxis within 500 meters"
+        data_type: float
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: pct_taxis_within_1km
+        description: "Percentage of total available taxis within 1 kilometer"
+        data_type: float
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: total_taxis_in_dataset
+        description: "Total number of taxis in the dataset for the given timestamp"
+        data_type: int
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0

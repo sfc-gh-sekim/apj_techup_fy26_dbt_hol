@@ -46,6 +46,56 @@ models:
         description: "Original raw JSON data for reference"
         data_type: variant
 
+  - name: all_locations
+    description: "Unified location data combining hawker centres, MRT station exits, and tourist attractions with temporal tracking"
+    meta:
+      layer: "silver"
+      data_source: "Combined from hawker_centres, mrt_station_exits, and tourist_attractions models"
+      transformation: "Standardized location schema with unified field mapping and timestamp tracking"
+    columns:
+      - name: timestamp_sgt
+        description: "Singapore timezone timestamp when the location data was retrieved/updated"
+        data_type: timestamp
+        tests:
+          - not_null
+      - name: location_id
+        description: "Unique identifier for the location (varies by type)"
+        data_type: varchar
+        tests:
+          - not_null
+      - name: location_name
+        description: "Display name of the location"
+        data_type: varchar
+        tests:
+          - not_null
+      - name: location_type
+        description: "Type of location: hawker_centre, mrt_station_exit, or tourist_attraction"
+        data_type: varchar
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['hawker_centre', 'mrt_station_exit', 'tourist_attraction']
+      - name: address
+        description: "Physical address (when available)"
+        data_type: varchar
+      - name: street_name
+        description: "Street name component (hawker centres only)"
+        data_type: varchar
+      - name: postcode
+        description: "Postal code (hawker centres only)"
+        data_type: varchar
+      - name: photo_url
+        description: "URL to photo or image"
+        data_type: varchar
+      - name: location_coords
+        description: "Geographic coordinates as Snowflake GEOGRAPHY point"
+        data_type: geography
+        tests:
+          - not_null
+      - name: location_description
+        description: "Generated description combining key attributes for each location type"
+        data_type: varchar
+
   - name: mrt_station_exits
     description: "MRT station exit information with parsed location and exit details"
     meta:
