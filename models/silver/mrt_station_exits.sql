@@ -5,3 +5,4 @@ select
     f.value:properties:Description::varchar as raw_description_html
 from {{ source('raw_data', 'lta_mrt_station_exit') }} mrt,
 lateral flatten(input => mrt.DATA:features) f
+qualify rank() over (order by retrieved_at desc) = 1

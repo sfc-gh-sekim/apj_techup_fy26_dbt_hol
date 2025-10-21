@@ -11,3 +11,4 @@ SELECT
     f.value:properties:Description::varchar as raw_description_html
 from {{ source('raw_data', 'tourist_attractions') }} ta,
 lateral flatten(input => ta.DATA:features) f
+qualify rank() over (order by retrieved_at desc) = 1

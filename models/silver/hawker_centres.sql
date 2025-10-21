@@ -10,3 +10,4 @@ select
     hc.DATA
 from {{ source('raw_data', 'hawker_centres') }} hc,
 lateral flatten(input => hc.DATA:features) f
+qualify rank() over (order by retrieved_at desc) = 1
