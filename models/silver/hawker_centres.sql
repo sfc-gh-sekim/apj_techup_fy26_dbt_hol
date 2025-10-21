@@ -9,5 +9,5 @@ select
     , f.value:properties:NUMBER_OF_COOKED_FOOD_STALLS::int as num_cooked_food_stalls
     , f.value:properties:PHOTOURL::varchar as photo_url
     , st_makepoint(f.value:geometry:coordinates[0], f.value:geometry:coordinates[1]) as coords
-from {{ source('raw_data', 'hawker_centres') }} hc,
-lateral flatten(input => hc.DATA:features) f
+from {{ source('raw_data', 'hawker_centres') }} hc
+    , lateral flatten(input => hc.DATA:features) f
