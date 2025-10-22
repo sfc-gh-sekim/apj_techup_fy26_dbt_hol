@@ -1,6 +1,5 @@
 select 
-    dateadd(hour, 8, retrieved_at) as timestamp_sgt
-    , REGEXP_SUBSTR(f.value:properties:Description::varchar, '<th>URL_PATH</th>\\s*<td>([^<]+)</td>', 1, 1, 'e', 1) as url_path
+    REGEXP_SUBSTR(f.value:properties:Description::varchar, '<th>URL_PATH</th>\\s*<td>([^<]+)</td>', 1, 1, 'e', 1) as url_path
     , REGEXP_SUBSTR(f.value:properties:Description::varchar, '<th>ADDRESS</th>\\s*<td>([^<]+)</td>', 1, 1, 'e', 1) as address
     , REGEXP_SUBSTR(f.value:properties:Description::varchar, '<th>PAGETITLE</th>\\s*<td>([^<]+)</td>', 1, 1, 'e', 1) as page_title
     , REGEXP_SUBSTR(f.value:properties:Description::varchar, '<th>IMAGE_PATH</th>\\s*<td>([^<]+)</td>', 1, 1, 'e', 1) as image_path
@@ -12,3 +11,4 @@ select
     , f.value:properties:Description::varchar as raw_description_html
 from {{ source('raw_data', 'tourist_attractions') }} ta
     , lateral flatten(input => ta.DATA:features) f
+qualify rank() over (order by retrieved_at desc) = 1

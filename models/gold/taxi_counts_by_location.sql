@@ -1,63 +1,60 @@
--- Gold layer model: Historical taxi counts by location with proximity analysis
--- Uses temporal ASOF join to match taxi availability data with location timestamps
--- Calculates taxi availability within 100m, 500m, and 1km radius over time
-
-with taxi_proximity_calculations as (
+with latest_taxi_data as (
+    -- Get the most recent taxi availability data
     select 
-        l.timestamp_sgt as location_timestamp_sgt
-        , l.location_id
+        timestamp_sgt as taxi_timestamp_sgt
+        , taxi_coords
+    from {{ ref('taxi_availability') }}
+)
+, location_taxi_pairs as (
+    -- Create all location-taxi pairs with distances using latest data
+    select 
+        l.location_id
         , l.location_name
         , l.location_type
         , l.address
         , l.location_description
-        -- Use FIRST_VALUE to get location_coords without grouping by it
-        , first_value(l.location_coords) over (
-            partition by l.timestamp_sgt, l.location_id, t.timestamp_sgt
-            order by l.location_id
-        ) as location_coords
-        , t.timestamp_sgt as taxi_timestamp_sgt
-        -- Calculate distances and count taxis within each radius
-        , count(case 
-            when st_dwithin(l.location_coords, t.taxi_coords, 100) 
-            then 1 
-        end) as taxis_within_100m,
-        , count(case 
-            when st_dwithin(l.location_coords, t.taxi_coords, 500) 
-            then 1 
-        end) as taxis_within_500m,
-        , count(case 
-            when st_dwithin(l.location_coords, t.taxi_coords, 1000) 
-            then 1 
-        end) as taxis_within_1km,
-        -- Additional metrics for analysis
-        , min(case 
-            when t.taxi_coords is not null 
-            then st_distance(l.location_coords, t.taxi_coords)
-        end) as distance_to_nearest_taxi_m,
-        , count(t.taxi_coords) as total_taxis_in_dataset
+        , l.location_coords
+        , t.taxi_timestamp_sgt
+        , t.taxi_coords
+        , st_distance(l.location_coords, t.taxi_coords) as distance_m
+        , case when st_dwithin(l.location_coords, t.taxi_coords, 100) then 1 else 0 end as within_100m
+        , case when st_dwithin(l.location_coords, t.taxi_coords, 500) then 1 else 0 end as within_500m
+        , case when st_dwithin(l.location_coords, t.taxi_coords, 1000) then 1 else 0 end as within_1km
     from {{ ref('all_locations') }} l
-    asof join {{ ref('taxi_availability') }} t
-        match_condition (l.timestamp_sgt >= t.timestamp_sgt)
-        on l.location_id = l.location_id  -- Self-join condition for ASOF syntax
+    cross join latest_taxi_data t
+)
+, taxi_proximity_calculations as (
+    -- Aggregate proximity metrics for each location
+    select 
+        location_id
+        , location_name
+        , location_type
+        , address
+        , location_description
+        , any_value(location_coords) as location_coords
+        , any_value(taxi_timestamp_sgt) as taxi_timestamp_sgt
+        , sum(within_100m) as taxis_within_100m
+        , sum(within_500m) as taxis_within_500m
+        , sum(within_1km) as taxis_within_1km
+        , min(distance_m) as distance_to_nearest_taxi_m
+        , count(taxi_coords) as total_taxis_in_dataset
+    from location_taxi_pairs
     group by 
-        l.timestamp_sgt
-        , l.location_id
-        , l.location_name
-        , l.location_type
-        , l.address
-        , l.location_description
-        , t.timestamp_sgt
+        location_id
+        , location_name
+        , location_type
+        , address
+        , location_description
 )
 select 
-    location_timestamp_sgt
-    , taxi_timestamp_sgt
-    , location_id
+    location_id
     , location_name
     , location_type
     , address
     , location_description
-     , location_coords
-     , taxis_within_100m
+    , location_coords
+    , taxi_timestamp_sgt
+    , taxis_within_100m
     , taxis_within_500m
     , taxis_within_1km
     , distance_to_nearest_taxi_m
@@ -66,16 +63,14 @@ select
         when taxis_within_500m > 0 then 'Medium'
         when taxis_within_1km > 0 then 'Low'
         else 'None'
-    end as taxi_availability_category,
+    end as taxi_availability_category
     -- Percentage of total taxis within each radius
-     , round((taxis_within_100m::float / nullif(total_taxis_in_dataset, 0)) * 100, 2) as pct_taxis_within_100m
+    , round((taxis_within_100m::float / nullif(total_taxis_in_dataset, 0)) * 100, 2) as pct_taxis_within_100m
     , round((taxis_within_500m::float / nullif(total_taxis_in_dataset, 0)) * 100, 2) as pct_taxis_within_500m
     , round((taxis_within_1km::float / nullif(total_taxis_in_dataset, 0)) * 100, 2) as pct_taxis_within_1km
     , total_taxis_in_dataset
 from taxi_proximity_calculations
 order by 
-    location_timestamp_sgt desc
-    , taxi_timestamp_sgt desc
-    , location_type
+    location_type
     , taxis_within_100m desc
     , location_name
