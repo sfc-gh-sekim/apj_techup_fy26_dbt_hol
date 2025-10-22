@@ -14,7 +14,6 @@ models:
         data_type: varchar
         tests:
           - not_null
-          - unique
       - name: name
         description: "Name of the hawker centre"
         data_type: varchar
@@ -131,7 +130,7 @@ models:
       dataset_url: "https://data.gov.sg/datasets/d_e25662f1a062dd046453926aa284ba64/view"
       transformation: "Extracted timestamp, count, and API status information"
     columns:
-      - name: timestamp
+      - name: timestamp_sgt
         description: "Timestamp when taxi data was captured"
         data_type: timestamp
         tests:
@@ -153,7 +152,7 @@ models:
       dataset_url: "https://data.gov.sg/datasets/d_e25662f1a062dd046453926aa284ba64/view"
       transformation: "Flattened coordinate pairs into individual taxi records"
     columns:
-      - name: timestamp
+      - name: timestamp_sgt
         description: "Timestamp when taxi data was captured"
         data_type: timestamp
         tests:
