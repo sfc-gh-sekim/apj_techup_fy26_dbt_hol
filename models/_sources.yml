@@ -109,29 +109,3 @@ sources:
           - name: created_at
             description: "Timestamp when the record was inserted into Snowflake"
             data_type: timestamp_ntz
-
-      - name: weather_forecast_2h
-        description: "2-hour weather forecast for Singapore, updated every 30 minutes"
-        meta:
-          data_source: "data.gov.sg Datasets API"
-          update_frequency: "Every 30 minutes"
-          data_format: "JSON"
-          dataset_id: "d_3f9e064e25005b0e42969944ccaf2e7a"
-        columns:
-          - name: dataset_id
-            description: "Identifier for the dataset source"
-            data_type: varchar(100)
-          - name: retrieved_at
-            description: "Timestamp when the data was retrieved from the API"
-            data_type: timestamp_ntz
-          - name: data
-            description: "Raw JSON data containing weather forecast information"
-            data_type: variant
-            meta:
-              contains:
-                - "area_metadata: Array of area information"
-                - "items: Array of forecast items with timestamps and forecasts"
-                - "api_info: API status and metadata"
-          - name: created_at
-            description: "Timestamp when the record was inserted into Snowflake"
-            data_type: timestamp_ntz

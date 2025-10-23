@@ -1,6 +1,6 @@
 -- Hawker Centres
 select 
-    'HC_' || objectid as location_id
+    'HC_' || md5(name) as location_id
     , name as location_name
     , 'hawker_centre' as location_type
     , address
@@ -15,7 +15,7 @@ union all
 
 -- MRT Station Exits
 select 
-    'MRT_' || replace(station_name, ' ', '_') || '_' || exit_code as location_id
+    'MRT_' || md5('MRT station exit: ' || exit_code || ' at ' || station_name) as location_id
     , station_name as location_name
     , 'mrt_station_exit' as location_type
     , null as address
@@ -30,7 +30,7 @@ union all
 
 -- Tourist Attractions
 select 
-    'TA_' || replace(replace(page_title, ' ', '_'), '''', '') as location_id
+    'TA_' || md5(replace(replace(page_title, ' ', '_'), '''', '')) as location_id
     , page_title as location_name
     , 'tourist_attraction' as location_type
     , address

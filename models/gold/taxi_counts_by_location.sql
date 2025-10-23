@@ -1,9 +1,10 @@
 with latest_taxi_data as (
-    -- Get the most recent taxi availability data
     select 
-        timestamp_sgt as taxi_timestamp_sgt
+        timestamp_sgt
         , taxi_coords
     from {{ ref('taxi_availability') }}
+    -- Take last hour only
+    --where timestamp_sgt >= (select dateadd(hours, -1, max(timestamp_sgt)) from {{ ref('taxi_availability') }})
 )
 , location_taxi_pairs as (
     -- Create all location-taxi pairs with distances using latest data
@@ -14,7 +15,7 @@ with latest_taxi_data as (
         , l.address
         , l.location_description
         , l.location_coords
-        , t.taxi_timestamp_sgt
+        , t.timestamp_sgt
         , t.taxi_coords
         , st_distance(l.location_coords, t.taxi_coords) as distance_m
         , case when st_dwithin(l.location_coords, t.taxi_coords, 100) then 1 else 0 end as within_100m
@@ -32,7 +33,7 @@ with latest_taxi_data as (
         , address
         , location_description
         , any_value(location_coords) as location_coords
-        , any_value(taxi_timestamp_sgt) as taxi_timestamp_sgt
+        , any_value(timestamp_sgt) as timestamp_sgt
         , sum(within_100m) as taxis_within_100m
         , sum(within_500m) as taxis_within_500m
         , sum(within_1km) as taxis_within_1km
@@ -46,28 +47,18 @@ with latest_taxi_data as (
         , address
         , location_description
 )
-select 
-    location_id
+select
+    timestamp_sgt
+    , location_id
     , location_name
     , location_type
     , address
     , location_description
     , location_coords
-    , taxi_timestamp_sgt
     , taxis_within_100m
     , taxis_within_500m
     , taxis_within_1km
     , distance_to_nearest_taxi_m
-    , case 
-        when taxis_within_100m > 0 then 'High'
-        when taxis_within_500m > 0 then 'Medium'
-        when taxis_within_1km > 0 then 'Low'
-        else 'None'
-    end as taxi_availability_category
-    -- Percentage of total taxis within each radius
-    , round((taxis_within_100m::float / nullif(total_taxis_in_dataset, 0)) * 100, 2) as pct_taxis_within_100m
-    , round((taxis_within_500m::float / nullif(total_taxis_in_dataset, 0)) * 100, 2) as pct_taxis_within_500m
-    , round((taxis_within_1km::float / nullif(total_taxis_in_dataset, 0)) * 100, 2) as pct_taxis_within_1km
     , total_taxis_in_dataset
 from taxi_proximity_calculations
 order by 

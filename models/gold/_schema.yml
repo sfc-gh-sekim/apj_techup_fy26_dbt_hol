@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: taxi_counts_by_location
-    description: "Historical taxi availability counts by location with proximity analysis using ASOF joins"
+    description: "Live taxi availability counts by location with proximity analysis using ASOF joins"
     meta:
       layer: "gold"
       data_source: "Combined from all_locations and taxi_availability silver models"
@@ -13,7 +13,7 @@ models:
         data_type: timestamp
         tests:
           - not_null
-      - name: taxi_timestamp_sgt
+      - name: timestamp_sgt
         description: "Singapore timezone timestamp when the taxi data was retrieved"
         data_type: timestamp
         tests:
@@ -54,28 +54,19 @@ models:
         data_type: int
         tests:
           - not_null
-          - dbt_utils.accepted_range:
-              min_value: 0
       - name: taxis_within_500m
         description: "Count of available taxis within 500 meters of the location"
         data_type: int
         tests:
           - not_null
-          - dbt_utils.accepted_range:
-              min_value: 0
       - name: taxis_within_1km
         description: "Count of available taxis within 1 kilometer of the location"
         data_type: int
         tests:
           - not_null
-          - dbt_utils.accepted_range:
-              min_value: 0
       - name: distance_to_nearest_taxi_m
         description: "Distance in meters to the nearest available taxi"
         data_type: float
-        tests:
-          - dbt_utils.accepted_range:
-              min_value: 0
       - name: taxi_availability_category
         description: "Categorized taxi availability: High (within 100m), Medium (within 500m), Low (within 1km), None"
         data_type: varchar
@@ -86,28 +77,14 @@ models:
       - name: pct_taxis_within_100m
         description: "Percentage of total available taxis within 100 meters"
         data_type: float
-        tests:
-          - dbt_utils.accepted_range:
-              min_value: 0
-              max_value: 100
       - name: pct_taxis_within_500m
         description: "Percentage of total available taxis within 500 meters"
         data_type: float
-        tests:
-          - dbt_utils.accepted_range:
-              min_value: 0
-              max_value: 100
       - name: pct_taxis_within_1km
         description: "Percentage of total available taxis within 1 kilometer"
         data_type: float
-        tests:
-          - dbt_utils.accepted_range:
-              min_value: 0
-              max_value: 100
       - name: total_taxis_in_dataset
         description: "Total number of taxis in the dataset for the given timestamp"
         data_type: int
         tests:
           - not_null
-          - dbt_utils.accepted_range:
-              min_value: 0

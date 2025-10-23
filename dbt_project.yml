@@ -25,7 +25,7 @@ models:
       #+refresh_mode: INCREMENTAL
       #+initialize: ON_CREATE
     gold:
-      +materialized: table
+      +materialized: view
       +schema: DBT_HOL_GOLD
       #+snowflake_warehouse: TECHUP25_WH
       #+on_configuration_change: apply 
