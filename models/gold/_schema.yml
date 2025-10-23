@@ -88,3 +88,113 @@ models:
         data_type: int
         tests:
           - not_null
+
+  - name: taxi_counts
+    description: "Simple aggregated taxi availability counts by timestamp"
+    meta:
+      layer: "gold"
+      data_source: "taxi_availability_metadata silver model"
+      transformation: "Direct selection of timestamp and taxi count data"
+    columns:
+      - name: timestamp_sgt
+        description: "Singapore timezone timestamp when the taxi data was retrieved"
+        data_type: timestamp
+        tests:
+          - not_null
+      - name: taxi_count
+        description: "Total number of available taxis at the given timestamp"
+        data_type: bigint
+        tests:
+          - not_null
+
+  - name: tourist_attractions_proximity
+    description: "Tourist attractions with their nearest MRT station exit and hawker centre, including distance calculations and proximity categories"
+    meta:
+      layer: "gold"
+      data_source: "Combined from all_locations silver model (tourist attractions, MRT stations, hawker centres)"
+      transformation: "Spatial joins using ST_DISTANCE with window functions to find nearest facilities"
+    columns:
+      - name: location_id
+        description: "Unique identifier for the tourist attraction"
+        data_type: varchar
+        tests:
+          - not_null
+      - name: location_name
+        description: "Name of the tourist attraction"
+        data_type: varchar
+        tests:
+          - not_null
+      - name: location_type
+        description: "Type of location (always 'tourist_attraction' for this model)"
+        data_type: varchar
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['tourist_attraction']
+      - name: address
+        description: "Physical address of the tourist attraction"
+        data_type: varchar
+      - name: street_name
+        description: "Street name component of the address"
+        data_type: varchar
+      - name: postcode
+        description: "Postal code of the tourist attraction"
+        data_type: varchar
+      - name: photo_url
+        description: "URL to photo or image of the tourist attraction"
+        data_type: varchar
+      - name: location_coords
+        description: "Geographic coordinates of the tourist attraction as Snowflake GEOGRAPHY point"
+        data_type: geography
+        tests:
+          - not_null
+      - name: location_description
+        description: "Description and overview of the tourist attraction"
+        data_type: varchar
+      - name: nearest_mrt_location_id
+        description: "Unique identifier of the nearest MRT station exit"
+        data_type: varchar
+      - name: nearest_mrt_name
+        description: "Name of the nearest MRT station"
+        data_type: varchar
+      - name: nearest_mrt_description
+        description: "Description of the nearest MRT station exit including exit code"
+        data_type: varchar
+      - name: distance_to_nearest_mrt_m
+        description: "Exact distance in meters to the nearest MRT station exit"
+        data_type: float
+      - name: distance_to_nearest_mrt_m_rounded
+        description: "Distance in meters to the nearest MRT station exit, rounded to nearest whole number"
+        data_type: float
+      - name: nearest_hawker_location_id
+        description: "Unique identifier of the nearest hawker centre"
+        data_type: varchar
+      - name: nearest_hawker_name
+        description: "Name of the nearest hawker centre"
+        data_type: varchar
+      - name: nearest_hawker_description
+        description: "Description of the nearest hawker centre including number of food stalls"
+        data_type: varchar
+      - name: nearest_hawker_address
+        description: "Physical address of the nearest hawker centre"
+        data_type: varchar
+      - name: distance_to_nearest_hawker_m
+        description: "Exact distance in meters to the nearest hawker centre"
+        data_type: float
+      - name: distance_to_nearest_hawker_m_rounded
+        description: "Distance in meters to the nearest hawker centre, rounded to nearest whole number"
+        data_type: float
+      - name: mrt_proximity_category
+        description: "Categorized proximity to nearest MRT station: Very Close (≤500m), Close (≤1km), Moderate (≤2km), Far (>2km)"
+        data_type: varchar
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Very Close', 'Close', 'Moderate', 'Far']
+      - name: hawker_proximity_category
+        description: "Categorized proximity to nearest hawker centre: Very Close (≤300m), Close (≤800m), Moderate (≤1.5km), Far (>1.5km)"
+        data_type: varchar
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Very Close', 'Close', 'Moderate', 'Far']
