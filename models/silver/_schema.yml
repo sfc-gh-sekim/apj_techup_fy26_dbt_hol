@@ -41,6 +41,7 @@ models:
         data_type: geography
         tests:
           - not_null
+          - singapore_geography_bounds
       - name: data
         description: "Original raw JSON data for reference"
         data_type: variant
@@ -91,6 +92,7 @@ models:
         data_type: geography
         tests:
           - not_null
+          - singapore_geography_bounds
       - name: location_description
         description: "Generated description combining key attributes for each location type"
         data_type: varchar
@@ -118,6 +120,7 @@ models:
         data_type: geography
         tests:
           - not_null
+          - singapore_geography_bounds
       - name: raw_description_html
         description: "Original HTML description containing all attributes"
         data_type: varchar
@@ -162,6 +165,7 @@ models:
         data_type: geography
         tests:
           - not_null
+          - singapore_geography_bounds
 
   - name: tourist_attractions
     description: "Tourist attraction information with parsed details and location data"
@@ -202,6 +206,7 @@ models:
         data_type: geography
         tests:
           - not_null
+          - singapore_geography_bounds
       - name: raw_description_html
         description: "Original HTML description containing all attributes"
         data_type: varchar
