@@ -8,11 +8,6 @@ models:
       data_source: "Combined from all_locations and taxi_availability silver models"
       transformation: "Temporal ASOF join with spatial distance calculations for historical tracking"
     columns:
-      - name: location_timestamp_sgt
-        description: "Singapore timezone timestamp when the location data was retrieved"
-        data_type: timestamp
-        tests:
-          - not_null
       - name: timestamp_sgt
         description: "Singapore timezone timestamp when the taxi data was retrieved"
         data_type: timestamp
@@ -67,13 +62,6 @@ models:
       - name: distance_to_nearest_taxi_m
         description: "Distance in meters to the nearest available taxi"
         data_type: float
-      - name: taxi_availability_category
-        description: "Categorized taxi availability: High (within 100m), Medium (within 500m), Low (within 1km), None"
-        data_type: varchar
-        tests:
-          - not_null
-          - accepted_values:
-              values: ['High', 'Medium', 'Low', 'None']
       - name: pct_taxis_within_100m
         description: "Percentage of total available taxis within 100 meters"
         data_type: float

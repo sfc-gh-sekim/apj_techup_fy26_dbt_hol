@@ -3,8 +3,10 @@ with latest_taxi_data as (
         timestamp_sgt
         , taxi_coords
     from {{ ref('taxi_availability') }}
-    -- Take last hour only
-    --where timestamp_sgt >= (select dateadd(hours, -1, max(timestamp_sgt)) from {{ ref('taxi_availability') }})
+    -- Take the latest value only
+    where timestamp_sgt >= (select max(timestamp_sgt) from {{ ref('taxi_availability') }})
+    -- Take last 24 hours only
+    --where timestamp_sgt >= (select dateadd(hours, -24, max(timestamp_sgt)) from {{ ref('taxi_availability') }})
 )
 , location_taxi_pairs as (
     -- Create all location-taxi pairs with distances using latest data

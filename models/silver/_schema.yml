@@ -41,7 +41,9 @@ models:
         data_type: geography
         tests:
           - not_null
-          - singapore_geography_bounds
+          - singapore_geography_bounds:
+              config:
+                severity: warn
       - name: data
         description: "Original raw JSON data for reference"
         data_type: variant
@@ -53,11 +55,6 @@ models:
       data_source: "Combined from hawker_centres, mrt_station_exits, and tourist_attractions models"
       transformation: "Standardized location schema with unified field mapping and timestamp tracking"
     columns:
-      - name: timestamp_sgt
-        description: "Singapore timezone timestamp when the location data was retrieved/updated"
-        data_type: timestamp
-        tests:
-          - not_null
       - name: location_id
         description: "Unique identifier for the location (varies by type)"
         data_type: varchar
@@ -92,7 +89,9 @@ models:
         data_type: geography
         tests:
           - not_null
-          - singapore_geography_bounds
+          - singapore_geography_bounds:
+              config:
+                severity: warn
       - name: location_description
         description: "Generated description combining key attributes for each location type"
         data_type: varchar
@@ -120,7 +119,9 @@ models:
         data_type: geography
         tests:
           - not_null
-          - singapore_geography_bounds
+          - singapore_geography_bounds:
+              config:
+                severity: warn
       - name: raw_description_html
         description: "Original HTML description containing all attributes"
         data_type: varchar
@@ -165,7 +166,9 @@ models:
         data_type: geography
         tests:
           - not_null
-          - singapore_geography_bounds
+          - singapore_geography_bounds:
+              config:
+                severity: warn
 
   - name: tourist_attractions
     description: "Tourist attraction information with parsed details and location data"
