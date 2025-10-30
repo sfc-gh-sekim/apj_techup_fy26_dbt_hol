@@ -153,7 +153,22 @@ from {{ source('raw_data', 'taxi_availability') }} ta -- Note the jinja template
 qualify rank() over (order by retrieved_at desc) = 1
 ```
 
-In the compiled version `target/compiled/techup_dbt_hands_on_lab/silver/taxi_availability.sql`, dbt dynamically generates the SQL from the jinja template - in this specific template the `source()` call looks for the corresponding source table referenced in `models/_sources.yml`:
+In the compiled version `target/compiled/techup_dbt_hands_on_lab/silver/taxi_availability.sql`, dbt dynamically generates the SQL from the jinja template - in this specific template the `source()` call looks up the corresponding source table reference in `models/_sources.yml`:
+
+```yml
+# models/_sources.yml
+
+sources:
+  - name: raw_data
+    description: "Landing tables for raw data from data.gov.sg APIs"
+    database: APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET
+    schema: RAW_DATA
+    tables:
+      - name: taxi_availability
+        description: "Real-time taxi availability data from Singapore's LTA Datamall, retrieved every minute"
+```
+
+Resulting compiled SQL:
 
 ```sql
 --target/compiled/techup_dbt_hands_on_lab/silver/taxi_availability.sql
@@ -164,7 +179,7 @@ from APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET.RAW_DATA.taxi_availability ta
     , lateral flatten(input => ta.DATA:features[0]:geometry:coordinates) f
 ```
 
-As a developer, you can manually validate queries like this one directly in Snowflake. As we are working in Snowflake Workspaces this is a simply a matter of hitting the run query button; this is no different to any other worksheet you run in Workspaces! 
+As a developer, you can manually validate queries by running it directly on Snowflake. As we are working in Snowflake Workspaces, this is a simply a matter of hitting the run query button as this is no different to any other worksheet you run in Workspaces.
 
 ---
 
@@ -244,6 +259,8 @@ This will create the **Gold Layer** models in `TECHUP25.DBT_HOL_GOLD`:
 2. You'll see a visual representation of your data lineage:
 
 ![Silver Layer DAG](images/5_dag.png)
+
+3. Click on any of the models to open up the corresponding worksheet, as well as additional information about the model.
 
 ---
 
