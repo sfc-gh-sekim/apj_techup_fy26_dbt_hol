@@ -81,7 +81,7 @@ This is a **private listing** shared specifically for this lab. The data is cont
 
 ## Step 4: Understand your dbt project
 
-Now that you have the workspace set up, let's take a tour of the key components that make up this dbt project. Understanding these files will help you navigate and modify the project effectively.
+Now that you have the workspace set up, it's time for a crash course / tour of core dbt components.
 
 ### 📄 dbt_project.yml - Project Configuration
 
@@ -122,7 +122,7 @@ models:
 
 ### 🔌 profiles.yml - Connection Configuration
 
-The [`profiles.yml`](profiles.yml) file contains connection details for your Snowflake environment. In a real production environment, it's common for multiple profiles to be defined here in order for CI/CD pipelines to correctly deploy models to the right environment.
+The [`profiles.yml`](profiles.yml) file contains connection details for your Snowflake environment. In a real production environment, it's common for multiple profiles to be defined here in order for CI/CD pipelines to deploy models to the correct environment.
 
 ```yml
 techup_dbt_hands_on_lab:
@@ -138,15 +138,15 @@ techup_dbt_hands_on_lab:
       user: ''
 ```
 
-- Snowflake will automatically runs under the current account and user context. dbt still expects `account` and `user` fields to be specified; we will leave these as empty strings as placeholders 
-- The `target: prod` setting determines which output configuration is used by default
+> **NOTE**: Snowflake will automatically runs under the current account and user context. However, as dbt still expects `account` and `user` fields to be populated, we will leave these as empty strings as placeholders 
 
 ### 📊 Model Files and Macros
 
-**Model Files** contain the SQL transformations that define your data pipeline. They use Jinja templating for dynamic SQL generation.
+**Model Files** contain the SQL transformations that define your data pipeline.
 
 **Example - Silver Layer Model:**
 ```sql
+-- models/silver/taxi_availability.sql
 select 
     ta.DATA:features[0]:properties:timestamp::timestamp as timestamp_sgt
     , st_makepoint(f.value[0], f.value[1]) as taxi_coords
@@ -154,25 +154,50 @@ from {{ source('raw_data', 'taxi_availability') }} ta
     , lateral flatten(input => ta.DATA:features[0]:geometry:coordinates) f
 ```
 
-**Key Features:**
-- **Jinja templating**: `{{ source() }}` dynamically references source tables
-- **Semi-structured data processing**: Extracts data from JSON/GeoJSON using Snowflake's VARIANT functions
-- **Geospatial functions**: `ST_MAKEPOINT()` creates geography objects for spatial analysis
-
-**Macros** are reusable pieces of Jinja code that generate SQL. This project includes a custom schema macro:
+You may notice some jinja in the above code; these are expressions wrapped in `{{ }}` - **Macros** are reusable pieces of Jinja code that generate SQL. This project includes a practical example with distance categorization:
 
 ```sql
--- Overrides default dbt behaviour on schema handling. See https://docs.getdbt.com/docs/build/custom-schemas#a-built-in-alternative-pattern-for-generating-schema-names
-{% macro generate_schema_name(custom_schema_name, node) -%}
-    {{ generate_schema_name_for_env(custom_schema_name, node) }}
-{%- endmacro %}
+-- macros/categorize_distance.sql
+{% macro categorize_distance(distance_column, thresholds=[100, 500, 1000, 2000], labels=['Very Close', 'Close', 'Moderate', 'Far', 'Very Far']) %}
+  case
+    {% for threshold in thresholds %}
+    when {{ distance_column }} <= {{ threshold }} then '{{ labels[loop.index0] }} (≤{{ threshold }}m)'
+    {% endfor %}
+    else '{{ labels[thresholds|length] }} (>{{ thresholds[-1] }}m)'
+  end
+{% endmacro %}
 ```
 
-This macro customizes how dbt generates schema names, ensuring models land in the correct schemas (e.g., `DBT_HOL_SILVER`, `DBT_HOL_GOLD`).
+**Usage in Models:**
+Instead of repeating distance categorization logic, you can now use the macro:
+
+```sql
+-- Before: Hardcoded case statements (repeated across multiple models)
+case 
+    when distance_to_nearest_mrt_m <= 500 then 'Very Close'
+    when distance_to_nearest_mrt_m <= 1000 then 'Close'
+    when distance_to_nearest_mrt_m <= 2000 then 'Moderate'
+    else 'Far'
+end as mrt_proximity_category
+
+-- After: Reusable macro with configurable thresholds
+{{ categorize_distance('distance_to_nearest_mrt_m', [500, 1000, 2000]) }} as mrt_proximity_category
+```
+
+You can meta-program any arbitrary SQL with jinja, and dbt provides a [wide range of functions](https://docs.getdbt.com/reference/dbt-jinja-functions), in addition to standard functions available from the Python jinja library. 
+
+**Macro Benefits:**
+- **Reusability**: One macro used across multiple models (`tourist_attractions_proximity`, `taxi_counts_by_location`)
+- **Consistency**: All distance categories follow the same format and logic
+- **Configurability**: Different thresholds for different use cases (MRT: [500,1000,2000], Taxi: [50,150,300,500])
+- **Maintainability**: Update logic in one place, affects all usages
+- **Self-documenting**: Output includes actual distance thresholds (e.g., "Very Close (≤500m)")
+
+
 
 ### 📋 Schema YAML Files - Documentation and Testing
 
-Schema YAML files (like `_schema.yml` and `_sources.yml`) serve two critical purposes: **documentation** and **data quality testing**.
+Schema YAML files (like `_schema.yml` and `_sources.yml`) serve three purposes: **documentation**,  **data quality testing**, and mapping sources for reference in downstream models.
 
 **Source Configuration** (`models/_sources.yml`):
 ```yml
@@ -287,7 +312,7 @@ Consider the above as a crash course on core dbt features - our customers often 
 
 ## Step 5: Compile the dbt Project
 
-We will first "compile" the dbt project. This generates executable SQL contained in the `model`, `tests` and `analysis` folders *without* executing those queries in Snowflake. This allows developers to visually inspect fully resolved models, validate jinja / macro usage and manually running queries for debugging or development purposes.
+We will first "compile" the dbt project.This generates executable SQL contained in the `model`, `tests` and `analysis` folders *without* executing those queries in Snowflake. While this step is not mandatory for a successful dbt run, this allows developers to visually inspect fully resolved models, validate jinja / macro usage and manually running queries for debugging or development purposes without incurring warehouse cost associated with running models.
 
 1. In your workspace, ensure **Profile** is set to to `prod`
 2. To the right, select `Compile` from the list of dbt operations
@@ -339,9 +364,11 @@ from APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET.RAW_DATA.taxi_availability ta
     , lateral flatten(input => ta.DATA:features[0]:geometry:coordinates) f
 ```
 
-You can meta-program any arbitrary SQL with jinja, and dbt provides a [wide range of functions](https://docs.getdbt.com/reference/dbt-jinja-functions), including standard functions available from the Python jinja library.
-
 As a developer, you can manually validate queries by running it directly on Snowflake. As we are working in Snowflake Workspaces, this is a simply a matter of hitting the run query button as this is no different to any other worksheet you run in Workspaces.
+
+Workspaces also provides a handy shortcut - you can instantly open up the compiled SQL for any model from its code editor:
+
+[Placeholder](placeholder.png)
 
 ---
 
@@ -363,16 +390,14 @@ We will first run silver layer dbt models.
 The dbt engine will:
 1. ✅ Parse your dbt project (`dbt_project.yml`)
 2. ✅ Compile SQL models with Jinja templates
-3. ✅ Run data quality tests (these are defined in `_schema.yml`)
-4. ✅ Create **6 Tables** in `TECHUP25.DBT_HOL_SILVER`:
+3. ✅ Create **6 Tables** in `TECHUP25.DBT_HOL_SILVER`:
    - `hawker_centres`
    - `mrt_station_exits`
    - `taxi_availability`
    - `taxi_availability_metadata`
    - `tourist_attractions`
    - `all_locations`
-
-5. ✅ Display execution results with timing
+4. ✅ Display execution results with timing
 
 **Expected Output:**
 ```
@@ -411,6 +436,8 @@ You should now be able to see tables in the `TECHUP25.DBT_HOL_SILVER` schema. We
 
 This will create the **Gold Layer** models in `TECHUP25.DBT_HOL_GOLD`.
 
+[PLaceholder](placeholder)
+
 ---
 
 ## Step 8: View the Data Lineage
@@ -436,7 +463,7 @@ This will create the **Gold Layer** models in `TECHUP25.DBT_HOL_GOLD`.
 
 ## Step 10: Run as Dynamic Tables
 
-Up until this point, all dbt models have been materialised as tables. In order to keep the silver and gold models fresh with new records arriving in the data share, a task needs to be run every minute; while this is well within Snowflake's capabilities, the overhead cost of running dbt in addition to any processing times will likely become a nuisance as the project scales out.
+Up until this point, all dbt models have been materialised as tables. In order to keep the silver and gold models fresh with new records arriving in the data share, a task needs to be run every minute; while this is well within Snowflake's capabilities, the overhead cost of running the dbt project will likely become a nuisance as the project scales out.
 
 As an alternative to frequent task runs, we will leverage the `dbt-snowflake` adapter's support for Dynamic Tables to convert our existing models to them. This will delegate the data refresh orchestration to Snowflake, while dbt runs handle any configuration / model changes, as well as any tests that can now be scheduled independently of data refreshes.
 
@@ -446,11 +473,14 @@ This can be configured at one of three locations in a dbt project:
 2. Within the schema definition in `models/*/*.yml` files
 3. Within the model files
 
-A discussion of the intricacies of mixing different materialisation types in a dbt project is out of scope for this HOL - but in general exercise caution in mixing DTs and regular Tables as this can often lead to some interesting results! We will avoid this challenge altogether by converting *all* tables to DTs so that all refresh logic is delegated to Snowflake. To do this, we can set this within the `dbt_project.yml` file.
+A deep discussion on the intricacies of mixing different materialisation types in a dbt project is out of scope for this HOL - generally speaking, exercise caution when mixing DTs and regular Tables in a single dbt project/run as this can often lead to some interesting results! We will avoid this challenge altogether by converting *all* tables to DTs so that all refresh logic is delegated to Snowflake. To do this, we will make some changes to the `dbt_project.yml` file.
+
+### Update dbt_projects.yml to materialise models as Dynamic Tables
 
 Replace the entire `models` block within the `dbt_project.yml` file with the following:
 
 ```yml
+# dbt_project.yml
 models:
   techup_dbt_hands_on_lab:
     silver:
@@ -471,9 +501,13 @@ models:
       +initialize: ON_CREATE
 ```
 
-This will create silver layer DTs with `target_lag` set to `DOWNSTREAM`, and gold DTs with a default `target_lag` of 24 hours. This is sufficient for location-level datasets that update infrequently, but any models relying on the `taxi_availability` source table will require a far lower lag value. We will override the `target_lag` value at the file level for those models specifically.
+This will create all silver layer DTs with `target_lag` set to `DOWNSTREAM`, and all gold DTs with a default `target_lag` of 24 hours.
 
-In the `models/gold/taxi_counts.sql` model file, add an extra configuration block at the top of the file:
+While 24-hour lag is sufficient for location-level datasets that update infrequently, but any models relying on the `taxi_availability` source table will require a far lower lag value. We will override the `target_lag` value at the file level for those models specifically.
+
+### Update near-real-time model files to lower lag values
+
+1. In the `models/gold/taxi_counts.sql` model file, add an extra configuration block at the top of the file:
 
 ```sql
 --models/gold/taxi_counts.sql
@@ -485,7 +519,9 @@ select
 from {{ ref('taxi_availability_metadata') }}
 ```
 
-Repeat for `models/gold/taxi_counts_by_location.sql`. 
+### Run dbt build
+
+2. Repeat for `models/gold/taxi_counts_by_location.sql`. 
 
 Now run the dbt project:
 
