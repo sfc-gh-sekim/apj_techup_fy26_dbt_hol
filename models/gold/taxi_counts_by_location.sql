@@ -57,11 +57,18 @@ select
     , address
     , location_description
     , location_coords
+    , timestamp_sgt as taxi_data_timestamp
     , taxis_within_100m
     , taxis_within_500m
     , taxis_within_1km
     , distance_to_nearest_taxi_m
+    , round((taxis_within_100m::float / nullif(total_taxis_in_dataset, 0)) * 100, 2) as pct_taxis_within_100m
+    , round((taxis_within_500m::float / nullif(total_taxis_in_dataset, 0)) * 100, 2) as pct_taxis_within_500m
+    , round((taxis_within_1km::float / nullif(total_taxis_in_dataset, 0)) * 100, 2) as pct_taxis_within_1km
     , total_taxis_in_dataset
+    
+    -- Distance categories using reusable macro
+    , {{ categorize_distance('distance_to_nearest_taxi_m', [50, 150, 300, 500]) }} as nearest_taxi_distance_category
 from taxi_proximity_calculations
 order by 
     location_type

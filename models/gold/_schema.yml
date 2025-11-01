@@ -76,6 +76,13 @@ models:
         data_type: int
         tests:
           - not_null
+      - name: nearest_taxi_distance_category
+        description: "Categorized distance to nearest available taxi using reusable distance macro: Very Close (≤50m), Close (≤150m), Moderate (≤300m), Far (≤500m), Very Far (>500m)"
+        data_type: varchar
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Very Close (≤50m)', 'Close (≤150m)', 'Moderate (≤300m)', 'Far (≤500m)', 'Very Far (>500m)']
 
   - name: taxi_counts
     description: "Simple aggregated taxi availability counts by timestamp"
@@ -173,16 +180,16 @@ models:
         description: "Distance in meters to the nearest hawker centre, rounded to nearest whole number"
         data_type: float
       - name: mrt_proximity_category
-        description: "Categorized proximity to nearest MRT station: Very Close (≤500m), Close (≤1km), Moderate (≤2km), Far (>2km)"
+        description: "Categorized proximity to nearest MRT station using reusable distance macro: Very Close (≤500m), Close (≤1km), Moderate (≤2km), Far (>2km)"
         data_type: varchar
         tests:
           - not_null
           - accepted_values:
-              values: ['Very Close', 'Close', 'Moderate', 'Far']
+              values: ['Very Close (≤500m)', 'Close (≤1000m)', 'Moderate (≤2000m)', 'Far (>2000m)']
       - name: hawker_proximity_category
-        description: "Categorized proximity to nearest hawker centre: Very Close (≤300m), Close (≤800m), Moderate (≤1.5km), Far (>1.5km)"
+        description: "Categorized proximity to nearest hawker centre using reusable distance macro: Very Close (≤300m), Close (≤800m), Moderate (≤1.5km), Far (>1.5km)"
         data_type: varchar
         tests:
           - not_null
           - accepted_values:
-              values: ['Very Close', 'Close', 'Moderate', 'Far']
+              values: ['Very Close (≤300m)', 'Close (≤800m)', 'Moderate (≤1500m)', 'Far (>1500m)']

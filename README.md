@@ -352,6 +352,8 @@ By completing this lab, you've learned how to:
 ## 👥 Contributors
 
 - **TechUP FY26 APJ Team**
+   - Sean Kim (sean.kim@snowflake.com)
+   - Adrian Lee (adrian.lee@snowflake.com)
 - Data source: [data.gov.sg](https://data.gov.sg/)
 
 ---
@@ -365,3 +367,4 @@ This project is for educational purposes as part of the TechUP FY26 training pro
 **Happy transforming! 🎉**
 
 For questions or issues, please contact your TechUP instructor.
+

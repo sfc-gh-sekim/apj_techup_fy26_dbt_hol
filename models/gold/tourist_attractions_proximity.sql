@@ -89,20 +89,9 @@ select
     nh.distance_to_nearest_hawker_m,
     round(nh.distance_to_nearest_hawker_m, 0) as distance_to_nearest_hawker_m_rounded,
     
-    -- Convenience categories
-    case 
-        when nm.distance_to_nearest_mrt_m <= 500 then 'Very Close'
-        when nm.distance_to_nearest_mrt_m <= 1000 then 'Close'
-        when nm.distance_to_nearest_mrt_m <= 2000 then 'Moderate'
-        else 'Far'
-    end as mrt_proximity_category,
-    
-    case 
-        when nh.distance_to_nearest_hawker_m <= 300 then 'Very Close'
-        when nh.distance_to_nearest_hawker_m <= 800 then 'Close'
-        when nh.distance_to_nearest_hawker_m <= 1500 then 'Moderate'
-        else 'Far'
-    end as hawker_proximity_category
+    -- Proximity categories using reusable macro
+    {{ categorize_distance('nm.distance_to_nearest_mrt_m', [500, 1000, 2000]) }} as mrt_proximity_category,
+    {{ categorize_distance('nh.distance_to_nearest_hawker_m', [300, 800, 1500]) }} as hawker_proximity_category
 
 from tourist_attractions ta
 left join nearest_mrt nm 

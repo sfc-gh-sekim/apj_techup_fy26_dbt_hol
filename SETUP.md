@@ -1,15 +1,40 @@
-# HOL Instructions
-## Singapore Taxi Availability Data Transformation Pipeline
+# Hands-On Lab - Singapore Taxi Availability Data Transformation Pipeline
 
 This guide walks you through setting up the dbt project on Snowflake Workspaces to transform Singapore transportation and location data.
 
-By the end of this HOL you should walk away with a good understanding of fundamental dbt concepts, 
+By the end of this HOL you should walk away with:
+
+- Knowledge of fundamental dbt concepts
+- How dbt executes transformation scripts in Snowflake 
+- How your customers can develop and deploy dbt projects via Workspaces
+- Understand materialisations
 
 ---
 
-## 🚀 Setup Instructions
+## Step 1: Get Dataset from Private Listing
 
-### Step 1: Set up your Snowflake Environment
+This is a **private listing** shared specifically for this lab. The data is continuously updated from Singapore's data.gov.sg APIs. New data arrives at least once a minute.
+
+1. Navigate to **Horizon Catalog** → **Data sharing** → **Private Sharing** in Snowsight
+2. Search for **"APJ TechUP FY26 - Singapore Taxi Dataset"**
+3. Click on the listing
+5. Click **Get**
+
+> **_Note:_** You may get a "Getting Data Ready - This will take at least 10 minutes" message here. Congratulations, you are the first account in your region to get this share! Replication usually won't take that long, but for now skip this step and proceed. Come back to this step before Step 6 at the latest.
+
+5. Leave the Database name as the default, this should be `APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET`
+
+![Private Listing](images/1_marketplace.png)
+
+6. Verify you can see these tables under `APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET.RAW_DATA`:
+   - `HAWKER_CENTRES`
+   - `LTA_MRT_STATION_EXIT`
+   - `TAXI_AVAILABILITY`
+   - `TOURIST_ATTRACTIONS`
+
+---
+
+## Step 2: Set up your Snowflake Environment
 
 1. Open a **SQL Worksheet** in Snowsight
 2. Copy the contents of [`setup.sql`](setup.sql)
@@ -32,29 +57,10 @@ By the end of this HOL you should walk away with a good understanding of fundame
 
 ---
 
-### Step 2: Get Dataset from Private Listing
-
-1. Navigate to **Horizon Catalog** → **Data sharing** → **Private Sharing** in Snowsight
-2. Search for **"APJ TechUP FY26 - Singapore Taxi Dataset"**
-3. Click on the listing: `APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET`
-
-![Marketplace Private Listing](images/1_marketplace.png)
-
-4. Click **"Open"** to access the shared data
-5. Verify you can see these tables:
-   - `HAWKER_CENTRES`
-   - `LTA_MRT_STATION_EXIT`
-   - `TAXI_AVAILABILITY`
-   - `TOURIST_ATTRACTIONS`
-
-> 💡 **Note**: This is a **private listing** shared specifically for this lab. The data is continuously updated from Singapore's data.gov.sg APIs.
-
----
-
-### Step 3: Create Workspace from Git
+## Step 3: Create Workspace from Git
 
 1. In Snowsight, navigate to **Projects** → **Workspaces**
-2. Click **"+ Workspace"** → **"Create from Git Repository"**
+2. Create a new Workspace - Under the workspaces dropdown (top-left of Workspaces UI), under the `Create Workspace` section, click **"From Git Repository"**
 3. Fill in the details:
 
    | Field | Value |
@@ -62,7 +68,7 @@ By the end of this HOL you should walk away with a good understanding of fundame
    | **Repository URL** | `https://github.com/sfc-gh-sekim/apj_techup_fy26_dbt_hol` |
    | **Workspace name** | `apj_techup_fy26_dbt_hol` |
    | **API Integration** | `TECHUP_DBT_HOL_API_INTEGRATION` |
-   | **Authentication** | Public repository (no token needed) |
+   | **Authentication** | Public repository (no PAT needed) |
 
 4. Click **"Create"**
 
@@ -73,59 +79,213 @@ By the end of this HOL you should walk away with a good understanding of fundame
 
 ---
 
-### Step 4: Understanding the Silver Layer
+## Step 4: Understand your dbt project
 
-The **Silver Layer** contains cleaned and structured data models. Navigate to the `models/silver/` folder in your workspace:
+Now that you have the workspace set up, let's take a tour of the key components that make up this dbt project. Understanding these files will help you navigate and modify the project effectively.
 
-![Silver Layer Files](images/3_silver.png)
+### 📄 dbt_project.yml - Project Configuration
 
-#### 📁 Silver Layer Files
+The [`dbt_project.yml`](dbt_project.yml) file is the heart of your dbt project. It defines project-level configurations and tells dbt how to operate on your models.
 
-| File | Purpose |
-|------|---------|
-| **`_schema.yml`** | Defines model documentation, tests, and column descriptions |
-| **`hawker_centres.sql`** | Transforms raw GeoJSON into structured hawker centre data |
-| **`mrt_station_exits.sql`** | Extracts MRT station exit information from HTML descriptions |
-| **`taxi_availability.sql`** | Flattens coordinate arrays into individual taxi location records |
-| **`taxi_availability_metadata.sql`** | Extracts summary statistics (timestamp, taxi count, API status) |
-| **`tourist_attractions.sql`** | Parses tourist attraction details from HTML descriptions |
-| **`all_locations.sql`** | Unified location data with unique identifiers |
+```yml
+name: 'techup_dbt_hands_on_lab'
+version: '1.0.0'
 
-#### 🔍 Example Transformation: `hawker_centres.sql`
+profile: 'techup_dbt_hands_on_lab'
 
-```sql
-select 
-    f.value:properties:OBJECTID::varchar as objectid
-    , f.value:properties:NAME::varchar as name
-    , f.value:properties:ADDRESS_MYENV::varchar as address
-    , f.value:properties:ADDRESSSTREETNAME::varchar as street_name
-    , f.value:properties:ADDRESSPOSTALCODE::varchar as postcode
-    , f.value:properties:NUMBER_OF_COOKED_FOOD_STALLS::int as num_cooked_food_stalls
-    , f.value:properties:PHOTOURL::varchar as photo_url
-    , st_makepoint(f.value:geometry:coordinates[0], f.value:geometry:coordinates[1]) as coords
-from {{ source('raw_data', 'hawker_centres') }} hc
-    , lateral flatten(input => hc.DATA:features) f
-qualify rank() over (order by retrieved_at desc) = 1
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:       
+  - "target"
+  - "dbt_packages"
+
+models:
+  techup_dbt_hands_on_lab:
+    silver:
+      +materialized: table
+      +schema: DBT_HOL_SILVER
+    gold:
+      +materialized: table
+      +schema: DBT_HOL_GOLD
 ```
 
-**What it does:**
-1. Flattens the GeoJSON features array
-2. Extracts all relevant properties (name, address, stalls count)
-3. Creates GEOGRAPHY point from coordinates
-4. Gets only the latest data extract
+**Key Components:**
+- **name**: Unique identifier for your dbt project
+- **profile**: References the connection profile in [`profiles.yml`](profiles.yml)
+- **Directory paths**: Tell dbt where to find models, tests, macros, etc.
+- **models configuration**: Sets default materialization (`table`) and custom schemas for silver and gold layers
 
-#### 🎯 Key Transformation Techniques
+### 🔌 profiles.yml - Connection Configuration
 
-1. **LATERAL FLATTEN** - Unnests arrays in VARIANT columns
-2. **ST_MAKEPOINT()** - Converts coordinates to GEOGRAPHY type
-3. **REGEX_SUBSTR()** - Extracts data from HTML descriptions
-4. **Type Casting** - Converts VARIANT to specific data types
-5. **dbt Sources** - References raw tables using `{{ source() }}`
-6. **QUALIFY** - Filters to latest data extract only
+The [`profiles.yml`](profiles.yml) file contains connection details for your Snowflake environment. In a real production environment, it's common for multiple profiles to be defined here in order for CI/CD pipelines to correctly deploy models to the right environment.
+
+```yml
+techup_dbt_hands_on_lab:
+  target: prod
+  outputs:
+    prod:
+      type: snowflake
+      role: TECHUP25_RL
+      warehouse: TECHUP25_WH
+      database: TECHUP25
+      schema: PUBLIC
+      account: ''
+      user: ''
+```
+
+- Snowflake will automatically runs under the current account and user context. dbt still expects `account` and `user` fields to be specified; we will leave these as empty strings as placeholders 
+- The `target: prod` setting determines which output configuration is used by default
+
+### 📊 Model Files and Macros
+
+**Model Files** contain the SQL transformations that define your data pipeline. They use Jinja templating for dynamic SQL generation.
+
+**Example - Silver Layer Model:**
+```sql
+select 
+    ta.DATA:features[0]:properties:timestamp::timestamp as timestamp_sgt
+    , st_makepoint(f.value[0], f.value[1]) as taxi_coords
+from {{ source('raw_data', 'taxi_availability') }} ta
+    , lateral flatten(input => ta.DATA:features[0]:geometry:coordinates) f
+```
+
+**Key Features:**
+- **Jinja templating**: `{{ source() }}` dynamically references source tables
+- **Semi-structured data processing**: Extracts data from JSON/GeoJSON using Snowflake's VARIANT functions
+- **Geospatial functions**: `ST_MAKEPOINT()` creates geography objects for spatial analysis
+
+**Macros** are reusable pieces of Jinja code that generate SQL. This project includes a custom schema macro:
+
+```sql
+-- Overrides default dbt behaviour on schema handling. See https://docs.getdbt.com/docs/build/custom-schemas#a-built-in-alternative-pattern-for-generating-schema-names
+{% macro generate_schema_name(custom_schema_name, node) -%}
+    {{ generate_schema_name_for_env(custom_schema_name, node) }}
+{%- endmacro %}
+```
+
+This macro customizes how dbt generates schema names, ensuring models land in the correct schemas (e.g., `DBT_HOL_SILVER`, `DBT_HOL_GOLD`).
+
+### 📋 Schema YAML Files - Documentation and Testing
+
+Schema YAML files (like `_schema.yml` and `_sources.yml`) serve two critical purposes: **documentation** and **data quality testing**.
+
+**Source Configuration** (`models/_sources.yml`):
+```yml
+sources:
+  - name: raw_data
+    description: "Landing tables for raw data from data.gov.sg APIs"
+    database: APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET
+    schema: RAW_DATA
+    tables:
+      - name: taxi_availability
+        description: "Real-time taxi availability data from Singapore's LTA Datamall, retrieved every minute"
+        meta:
+          data_source: "data.gov.sg Transport API"
+          update_frequency: "Every 1 minute"
+          data_format: "GeoJSON"
+          api_endpoint: "https://api.data.gov.sg/v1/transport/taxi-availability"
+        columns:
+          - name: dataset_id
+            description: "Identifier for the dataset source"
+            data_type: varchar(100)
+          - name: retrieved_at
+            description: "Timestamp when the data was retrieved from the API"
+            data_type: timestamp_ntz
+          - name: data
+            description: "Raw GeoJSON data containing taxi locations and metadata"
+            data_type: variant
+            meta:
+              contains:
+                - "type: GeoJSON type (FeatureCollection)"
+                - "features: Array of taxi location features with coordinates"
+                - "properties: Metadata including timestamp and taxi count"
+          - name: created_at
+            description: "Timestamp when the record was inserted into Snowflake"
+            data_type: timestamp_ntz
+```
+
+**Model Documentation and Testing** (`models/silver/_schema.yml`):
+```yml
+models:
+  - name: hawker_centres
+    description: "Cleaned and structured hawker centre data with extracted location and facility information"
+    meta:
+      layer: "silver"
+      data_source: "Singapore data.gov.sg hawker centres dataset"
+      dataset_url: "https://data.gov.sg/datasets/d_4a086da0a5553be1d89383cd90d07ecd/view"
+      transformation: "Flattened GeoJSON features with parsed properties"
+    columns:
+      - name: objectid
+        description: "Unique object identifier for the hawker centre"
+        data_type: varchar
+        tests:
+          - not_null
+      - name: name
+        description: "Name of the hawker centre"
+        data_type: varchar
+        tests:
+          - not_null
+      - name: address
+        description: "Full address of the hawker centre"
+        data_type: varchar
+      - name: street_name
+        description: "Street name component of the address"
+        data_type: varchar
+      - name: postcode
+        description: "Postal code of the hawker centre"
+        data_type: varchar
+      - name: num_cooked_food_stalls
+        description: "Number of cooked food stalls in the hawker centre"
+        data_type: int
+        tests:
+          - not_null
+      - name: photo_url
+        description: "URL to photo of the hawker centre"
+        data_type: varchar
+      - name: coords
+        description: "Geographic coordinates as Snowflake GEOGRAPHY point"
+        data_type: geography
+        tests:
+          - not_null
+          - singapore_geography_bounds:
+              config:
+                severity: warn
+      - name: data
+        description: "Original raw JSON data for reference"
+        data_type: variant
+```
+
+**Key Benefits of Schema YAML Files:**
+- **Documentation**: Descriptions, metadata, and data lineage information
+- **Data Quality Testing**: Built-in tests, for example: `not_null`, `unique`, `accepted_values`
+- **Custom Tests**: Project includes [`singapore_geography_bounds`](macros/test_singapore_geography_bounds.sql) test for spatial data validation
+- **Data Catalog Integration**: Automatically generates documentation in dbt's web interface
+- **Version Control**: Documentation stays in sync with code changes
+
+**Test Types Available:**
+- **Generic tests**: `not_null`, `unique`, `accepted_values`, `relationships`
+- **Custom tests**: Like `singapore_geography_bounds` defined in `macros/test_singapore_geography_bounds.sql`
+- **Severity levels**: `warn` vs `error` to control pipeline behavior
+
+### ❓ Other Features Not Covered in this HOL
+Consider the above as a crash course on core dbt features - our customers often leverage other capabilities included in dbt Core. Feel free to read about these in your own time:
+
+- [Snapshots](https://docs.getdbt.com/docs/build/snapshots): Records changes to a table over time with SCD2
+- [Seeds](https://docs.getdbt.com/docs/build/seeds): Load static data defined as CSV files in the `seeds/` folder
+- [User-defined functions](https://docs.getdbt.com/docs/build/udfs): Define UDFs
+- [Exposures](https://docs.getdbt.com/docs/build/exposures): Documentation that describes downstream use of the dbt project
+- [Groups](https://docs.getdbt.com/docs/build/groups): Document a collection of nodes within a dbt DAG
+- [Docs](https://docs.getdbt.com/reference/commands/cmd-docs): Generate a static website compiled from the dbt project
+- [Analyses](https://docs.getdbt.com/docs/build/analyses): Allow analysts to version control analytical queries related to the project
 
 ---
 
-### Step 5: Compile the dbt Project
+## Step 5: Compile the dbt Project
 
 We will first "compile" the dbt project. This generates executable SQL contained in the `model`, `tests` and `analysis` folders *without* executing those queries in Snowflake. This allows developers to visually inspect fully resolved models, validate jinja / macro usage and manually running queries for debugging or development purposes.
 
@@ -137,7 +297,7 @@ This will run for a few seconds. Once complete, you will notice a new folder cre
 
 Feel free to explore the various SQL scripts that have been generated - the below is a simple example of what was performed with this command:
 
-#### 🔍 Example Transformation: taxi_availability.sql
+### 🔍 Example Transformation: taxi_availability.sql
 
 This model flattens and transforms raw GeoJSON taxi data into a flat table.
 
@@ -179,11 +339,13 @@ from APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET.RAW_DATA.taxi_availability ta
     , lateral flatten(input => ta.DATA:features[0]:geometry:coordinates) f
 ```
 
+You can meta-program any arbitrary SQL with jinja, and dbt provides a [wide range of functions](https://docs.getdbt.com/reference/dbt-jinja-functions), including standard functions available from the Python jinja library.
+
 As a developer, you can manually validate queries by running it directly on Snowflake. As we are working in Snowflake Workspaces, this is a simply a matter of hitting the run query button as this is no different to any other worksheet you run in Workspaces.
 
 ---
 
-### Step 6: Run the dbt Project
+## Step 6: Run the dbt Project
 
 We will first run silver layer dbt models. 
 
@@ -240,20 +402,18 @@ You should now be able to see tables in the `TECHUP25.DBT_HOL_SILVER` schema. We
 
 ---
 
-### Step 7: Run the Gold Layer
+## Step 7: Run the Gold Layer
 
 1. Click the dropdown next to the **Run** button
 2. Untick `Execute with defaults`
 3. In the `Additional flags` textbox, enter `--select gold.*`
 4. Click the **Run** ▶️ button
 
-This will create the **Gold Layer** models in `TECHUP25.DBT_HOL_GOLD`:
-- `taxi_counts_by_location` - Proximity analysis combining all location types in the last 24 hours
-- `taxi_counts` - 
+This will create the **Gold Layer** models in `TECHUP25.DBT_HOL_GOLD`.
 
 ---
 
-### Step 8: View the Data Lineage
+## Step 8: View the Data Lineage
 
 1. In your workspace, click on the **"DAG"** tab (next to Query History)
 2. You'll see a visual representation of your data lineage:
@@ -264,22 +424,21 @@ This will create the **Gold Layer** models in `TECHUP25.DBT_HOL_GOLD`:
 
 ---
 
-### Step 9: Run data tests
+## Step 9: Run data tests
 
 1. In your workspace, under the dbt command dropdown, select `Test`
 2. This time, we'll run tests on the entire project - click the **Run** ▶️ button
-
 
 
 > **_NOTE:_** dbt also handily provides a `build` command - you may have already noticed this in the command dropdown. This will run models and tests under a single command, as well as other functions such as snapshots, seeds and UDFs, which we do not cover in this HOL. This is often run as a part of an automated refresh if the customer would prefer to run the entire end-to-end process without having to run multiple calls.
 
 ---
 
-### Step 10: Run as Dynamic Tables
+## Step 10: Run as Dynamic Tables
 
-Up until this point, all dbt models have been materialised as tables. In order to keep the silver and gold models fresh with new records arriving in the data share every minute, a task needs to be run every minute; while this is well within Snowflake's capabilities, the overhead cost of running dbt in addition to any processing times will likely become a nuisance as the project scales out.
+Up until this point, all dbt models have been materialised as tables. In order to keep the silver and gold models fresh with new records arriving in the data share, a task needs to be run every minute; while this is well within Snowflake's capabilities, the overhead cost of running dbt in addition to any processing times will likely become a nuisance as the project scales out.
 
-As an alternative, we will leverage the `dbt-snowflake` adapter's support for Dynamic Tables to convert our existing models to them. This effectively delegates the refresh events to Snowflake DT refreshes, while dbt runs handle configuration / model changes, and any tests that can now be scheduled independently of data refreshes.
+As an alternative to frequent task runs, we will leverage the `dbt-snowflake` adapter's support for Dynamic Tables to convert our existing models to them. This will delegate the data refresh orchestration to Snowflake, while dbt runs handle any configuration / model changes, as well as any tests that can now be scheduled independently of data refreshes.
 
 This can be configured at one of three locations in a dbt project:
 
@@ -287,7 +446,7 @@ This can be configured at one of three locations in a dbt project:
 2. Within the schema definition in `models/*/*.yml` files
 3. Within the model files
 
-A discussion of the intricacies of mixing different materialisation types in a dbt project is out of scope for this HOL - but exercise caution in mixing DTs and regular Tables as this can often lead to some interesting results! We will avoid this topic altogether by converting *all* tables to DTs. To do this, we can set this within the `dbt_project.yml` file.
+A discussion of the intricacies of mixing different materialisation types in a dbt project is out of scope for this HOL - but in general exercise caution in mixing DTs and regular Tables as this can often lead to some interesting results! We will avoid this challenge altogether by converting *all* tables to DTs so that all refresh logic is delegated to Snowflake. To do this, we can set this within the `dbt_project.yml` file.
 
 Replace the entire `models` block within the `dbt_project.yml` file with the following:
 
@@ -312,7 +471,7 @@ models:
       +initialize: ON_CREATE
 ```
 
-This will create silver DTs with `target_lag` set to `DOWNSTREAM`, and gold DTs with a default `target_lag` of 24 hours. This is sufficient for location-level datasets that update infrequently, but any models relying on the `taxi_availability` source table will require a far lower lag value. We will override the `target_lag` value at the file level for those models specifically.
+This will create silver layer DTs with `target_lag` set to `DOWNSTREAM`, and gold DTs with a default `target_lag` of 24 hours. This is sufficient for location-level datasets that update infrequently, but any models relying on the `taxi_availability` source table will require a far lower lag value. We will override the `target_lag` value at the file level for those models specifically.
 
 In the `models/gold/taxi_counts.sql` model file, add an extra configuration block at the top of the file:
 
@@ -336,63 +495,27 @@ Now run the dbt project:
 This should overwrite your existing models to DTs.
 
 ---
+
+## Step 11: Deploy dbt Project
+
+If you have been paying attention to the dbt execution logs, the dbt project has been stored and run from your user database (i.e. `USER$<your_user_name>`). To deploy it as a DBT PROJECT object within the database that can be monitored across the account:
+
+1. On the top-right side of the Workspaces UI, click **"Connect"**
+2. Click **"Deploy dbt project"**
+3. Fill in the details:
+
+   | Field | Value |
+   |-------|-------|
+   | **Select location** | Database: `TECHUP` Schema: `PROJECTS` |
+   | **Select or create dbt project** | `apj_techup_fy26_dbt_hol` |
+   | **Enter Name** | `TECHUP_DBT_PROJECT` |
+   | **Description** | `TechUP FY26 Singapore Taxi DBT project` |
+   | **Default Target** | `prod` |
+   | **Run dbt deps** | Unticked |
+
+4. Click "Deploy"
+
+---
 ## 🎓 HOL Complete!
 
-If you've finished this in good time and you're bored, try writing your own models! The `models/*/_schema.yml` files are great context for Cursor :-)
-
----
-
-## 🛠️ Troubleshooting
-
-### Issue: "Invalid profile: 'user' is a required property"
-
-**Solution:** This is expected! dbt Workspaces runs under your current user context, so `user` and `account` can be left empty in `profiles.yml`.
-
----
-
-### Issue: Dynamic Table not refreshing
-
-**Solution:**
-1. Check the warehouse is running: `SHOW WAREHOUSES LIKE 'TECHUP25_WH';`
-2. Verify target_lag setting in `dbt_project.yml`
-3. Manually refresh: `ALTER DYNAMIC TABLE <table_name> REFRESH;`
-
----
-
-### Issue: "Configuration paths exist which do not apply to any resources"
-
-**Cause:** You have `gold` configuration but no models in the gold folder yet.
-
-**Solution:** Either:
-1. Create gold models, or
-2. Comment out the gold section in `dbt_project.yml` temporarily
-
----
-
-### Issue: Git integration not working
-
-**Solution:**
-1. Verify API integration is created: `SHOW API INTEGRATIONS;`
-2. Check the allowed prefixes match your Git URL
-3. Ensure repository is public (or configure Personal Access Token)
-
----
-
-### Issue: Source tables not found
-
-**Solution:**
-1. Verify you have access to the private listing: `SHOW DATABASES LIKE 'APJ_TECHUP_FY26%';`
-2. Check the database and schema names in `models/_sources.yml`
-3. Grant necessary privileges: `GRANT USAGE ON DATABASE APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET TO ROLE TECHUP25_RL;`
-
----
-
-### Issue: Geography GROUP BY errors
-
-**Solution:** 
-This has been resolved in the current models by:
-1. Using `ANY_VALUE()` for geography fields in aggregations
-2. Separating spatial calculations from GROUP BY operations
-3. Using proper CTE structure to avoid geography in grouping
-
-
+If you've finished this in good time and you're bored, try writing your own models! The `models/*/_schema.yml` files make for some great context for Cursor :-)
