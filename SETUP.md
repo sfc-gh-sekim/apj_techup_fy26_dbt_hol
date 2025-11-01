@@ -20,11 +20,12 @@ This is a **private listing** shared specifically for this lab. The data is cont
 3. Click on the listing
 5. Click **Get**
 
-> **_Note:_** You may get a "Getting Data Ready - This will take at least 10 minutes" message here. Congratulations, you are the first account in your region to get this share! Replication usually won't take that long, but for now skip this step and proceed. Come back to this step before Step 6 at the latest.
+> **_Note:_** You may get a "Getting Data Ready - This will take at least 10 minutes" message here. Congratulations, you are the first account in your region to get this share! Replication *usually* won't take that long, but for now skip to Step 2. Come back and complete this step before Step 5 at the latest.
 
 5. Leave the Database name as the default, this should be `APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET`
+6. Under "Which roles, in addition to ACCOUNTADMIN, can access this database?", add `PUBLIC`
 
-![Private Listing](images/1_marketplace.png)
+![Private Listing](images/1_get_share.png)
 
 6. Verify you can see these tables under `APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET.RAW_DATA`:
    - `HAWKER_CENTRES`
