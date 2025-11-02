@@ -139,7 +139,7 @@ techup_dbt_hands_on_lab:
       user: ''
 ```
 
-> **NOTE**: Snowflake will automatically runs under the current account and user context. However, as dbt still expects `account` and `user` fields to be populated, we will leave these as empty strings as placeholders 
+> **NOTE**: Snowflake automatically runs dbt projects under the current account and user context. However, as dbt still expects `account` and `user` fields to be populated, we will leave these as empty strings as placeholders 
 
 ### 📊 Model Files and Macros
 
@@ -562,7 +562,7 @@ models:
       +snowflake_warehouse: TECHUP25_WH
       +on_configuration_change: apply
       +target_lag: downstream
-      +refresh_mode: INCREMENTAL
+      +refresh_mode: AUTO
       +initialize: ON_SCHEDULE
     gold:
       +materialized: dynamic_table
