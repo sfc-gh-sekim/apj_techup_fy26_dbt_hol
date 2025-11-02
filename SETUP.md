@@ -7,7 +7,7 @@ By the end of this HOL you should walk away with:
 - Knowledge of fundamental dbt concepts
 - How dbt executes transformation scripts in Snowflake 
 - How your customers can develop and deploy dbt projects via Workspaces
-- Understand materialisations
+- Understand materialisations in dbt and how they are configured, as well as materialisations natively supported in Snowflake
 
 ---
 
@@ -23,9 +23,9 @@ This is a **private listing** shared specifically for this lab. The data is cont
 > **_Note:_** You may get a "Getting Data Ready - This will take at least 10 minutes" message here. Congratulations, you are the first account in your region to get this share! Replication *usually* won't take that long, but for now skip to Step 2. Come back and complete this step before Step 5 at the latest.
 
 5. Leave the Database name as the default, this should be `APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET`
-6. Under "Which roles, in addition to ACCOUNTADMIN, can access this database?", add `PUBLIC`
+6. Under `"Which roles, in addition to ACCOUNTADMIN, can access this database?"`, add the `PUBLIC` role
 
-![Private Listing](images/1_get_share.png)
+<img src="images/1_get_share.png" alt="drawing" width="400">
 
 6. Verify you can see these tables under `APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET.RAW_DATA`:
    - `HAWKER_CENTRES`
@@ -73,7 +73,7 @@ This is a **private listing** shared specifically for this lab. The data is cont
 
 4. Click **"Create"**
 
-![Create Workspace](images/2_setup.png)
+<img src="images/2_setup.png" alt="drawing" width="400">
 
 5. Wait for the workspace to initialize (should take ~30 seconds)
 6. You should see the project files load in the left sidebar
@@ -186,15 +186,6 @@ end as mrt_proximity_category
 ```
 
 You can meta-program any arbitrary SQL with jinja, and dbt provides a [wide range of functions](https://docs.getdbt.com/reference/dbt-jinja-functions), in addition to standard functions available from the Python jinja library. 
-
-**Macro Benefits:**
-- **Reusability**: One macro used across multiple models (`tourist_attractions_proximity`, `taxi_counts_by_location`)
-- **Consistency**: All distance categories follow the same format and logic
-- **Configurability**: Different thresholds for different use cases (MRT: [500,1000,2000], Taxi: [50,150,300,500])
-- **Maintainability**: Update logic in one place, affects all usages
-- **Self-documenting**: Output includes actual distance thresholds (e.g., "Very Close (≤500m)")
-
-
 
 ### 📋 Schema YAML Files - Documentation and Testing
 
@@ -313,15 +304,35 @@ Consider the above as a crash course on core dbt features - our customers often 
 
 ## Step 5: Compile the dbt Project
 
-We will first "compile" the dbt project.This generates executable SQL contained in the `model`, `tests` and `analysis` folders *without* executing those queries in Snowflake. While this step is not mandatory for a successful dbt run, this allows developers to visually inspect fully resolved models, validate jinja / macro usage and manually running queries for debugging or development purposes without incurring warehouse cost associated with running models.
+We will first "compile" the dbt project. This generates executable SQL contained in the `model`, `tests` and `analysis` folders *without* executing those queries in Snowflake. While this step is not mandatory for a successful dbt run, this allows developers to visually inspect fully resolved models, validate jinja / macro usage and manually running queries for debugging or development purposes without incurring warehouse cost associated with running models.
 
 1. In your workspace, ensure **Profile** is set to to `prod`
 2. To the right, select `Compile` from the list of dbt operations
 3. Click the **Run** ▶️ button
 
-This will run for a few seconds. Once complete, you will notice a new folder created in your workspace: `target/compiled/techup_dbt_hands_on_lab`. 
+This will run for a few seconds. 
 
-Feel free to explore the various SQL scripts that have been generated - the below is a simple example of what was performed with this command:
+**Expected output:**
+```log
+execute dbt project from workspace USER$.PUBLIC.apj_techup_fy26_dbt_hol args='compile --target prod'
+
+16:55:21.082016 [info ] [Dummy-1   ]: Running with dbt=1.9.4
+16:55:21.154652 [error] [Dummy-1   ]:  adapter: Invalid profile: 'user' is a required property.
+16:55:21.444755 [info ] [Dummy-1   ]: Registered adapter: snowflake=1.9.2
+16:55:22.200301 [info ] [Dummy-1   ]: Unable to do partial parsing because saved manifest not found. Starting full parse.
+16:55:24.803504 [info ] [Dummy-1   ]: Found 9 models, 46 data tests, 4 sources, 477 macros
+16:55:24.808174 [info ] [Dummy-1   ]: 
+16:55:24.808807 [info ] [Dummy-1   ]: Concurrency: 1 threads (target='prod')
+16:55:24.809285 [info ] [Dummy-1   ]: 
+
+Command Execution Finished
+```
+
+Once complete, you should notice a new folder created in your workspace: `target/compiled/techup_dbt_hands_on_lab`. This folder contains SQL files of all compiled models and tests. You do not need to navigate to individual compilation outputs manually - Workspaces also provides a handy shortcut once compilation is complete. Open `models/silver/taxi_availability.sql` in a worksheet, and note the new shortcut buttons:
+
+<img src="images/3_compiled.png" alt="drawing" width="1000">
+
+Click the `View Compiled SQL` button to open the compiled version of the SQL in a new worksheet.
 
 ### 🔍 Example Transformation: taxi_availability.sql
 
@@ -367,24 +378,32 @@ from APJ_TECHUP_FY26__SINGAPORE_TAXI_DATASET.RAW_DATA.taxi_availability ta
 
 As a developer, you can manually validate queries by running it directly on Snowflake. As we are working in Snowflake Workspaces, this is a simply a matter of hitting the run query button as this is no different to any other worksheet you run in Workspaces.
 
-Workspaces also provides a handy shortcut - you can instantly open up the compiled SQL for any model from its code editor:
-
-[Placeholder](placeholder.png)
 
 ---
 
-## Step 6: Run the dbt Project
+## Step 6: View the Data Lineage
+
+You may have also noticed the button immediately to the right of the `View Compiled SQL` button - `"Show in DAG"` - click it.
+
+You can also access the visual DAG at any time by clicking on the **"DAG"** tab, next to Query History.
+
+Click on any of the models to open up the corresponding worksheet, as well as additional metadata about the model.
+
+<img src="images/5_dag.png" alt="drawing" width="1000">
+
+---
+
+## Step 7: Run the dbt Project
 
 We will first run silver layer dbt models. 
 
-1. In your workspace, set the **Profile** to `silver` (top right dropdown)
+1. In your workspace, ensure the **Profile** is set to `prod` (top right dropdown)
 2. Click the dropdown next to the **Run** button
 3. Untick `Execute with defaults`
 4. In the `Additional flags` textbox, enter `--select silver.*`. This specifies only the models in the `models/silver/` folder to be run
+5. Click **Run**
 
-![Run dbt Project](images/4_run_silver.png)
-
-4. Click **Execute**
+<img src="images/4_run_silver.png" alt="drawing" width="1000">
 
 **What Happens:**
 
@@ -401,7 +420,7 @@ The dbt engine will:
 4. ✅ Display execution results with timing
 
 **Expected Output:**
-```
+```log
 03:23:55.311707 [info ] [Dummy-1   ]: Running with dbt=1.9.4
 03:23:55.391529 [error] [Dummy-1   ]:  adapter: Invalid profile: 'user' is a required property.
 03:23:55.723377 [info ] [Dummy-1   ]: Registered adapter: snowflake=1.9.2
@@ -428,7 +447,9 @@ You should now be able to see tables in the `TECHUP25.DBT_HOL_SILVER` schema. We
 
 ---
 
-## Step 7: Run the Gold Layer
+## Step 8: Run the Gold Layer
+
+We will repeat the last step, this time deploying the Gold layer:
 
 1. Click the dropdown next to the **Run** button
 2. Untick `Execute with defaults`
@@ -437,32 +458,83 @@ You should now be able to see tables in the `TECHUP25.DBT_HOL_SILVER` schema. We
 
 This will create the **Gold Layer** models in `TECHUP25.DBT_HOL_GOLD`.
 
-[PLaceholder](placeholder)
+**Expected Output:**
+```
+execute dbt project from workspace USER$.PUBLIC.apj_techup_fy26_dbt_hol args='run --select gold.* --target prod'
 
----
+17:27:32.868533 [info ] [Dummy-1   ]: Running with dbt=1.9.4
+17:27:32.947020 [error] [Dummy-1   ]:  adapter: Invalid profile: 'user' is a required property.
+17:27:33.256009 [info ] [Dummy-1   ]: Registered adapter: snowflake=1.9.2
+17:27:34.797694 [info ] [Dummy-1   ]: Found 9 models, 46 data tests, 4 sources, 477 macros
+17:27:34.801678 [info ] [Dummy-1   ]: 
+17:27:34.802483 [info ] [Dummy-1   ]: Concurrency: 1 threads (target='prod')
+17:27:34.803133 [info ] [Dummy-1   ]: 
+17:27:36.951016 [info ] [Thread-2 (]: 1 of 3 START sql table model DBT_HOL_GOLD.taxi_counts .......................... [RUN]
+17:27:38.729148 [info ] [Thread-2 (]: 1 of 3 OK created sql table model DBT_HOL_GOLD.taxi_counts ..................... [SUCCESS 1 in 1.77s]
+17:27:38.732069 [info ] [Thread-2 (]: 2 of 3 START sql table model DBT_HOL_GOLD.taxi_counts_by_location .............. [RUN]
+17:27:41.297929 [info ] [Thread-2 (]: 2 of 3 OK created sql table model DBT_HOL_GOLD.taxi_counts_by_location ......... [SUCCESS 1 in 2.56s]
+17:27:41.300790 [info ] [Thread-2 (]: 3 of 3 START sql table model DBT_HOL_GOLD.tourist_attractions_proximity ........ [RUN]
+17:27:43.257801 [info ] [Thread-2 (]: 3 of 3 OK created sql table model DBT_HOL_GOLD.tourist_attractions_proximity ... [SUCCESS 1 in 1.96s]
+17:27:43.263462 [info ] [Dummy-1   ]: 
+17:27:43.264065 [info ] [Dummy-1   ]: Finished running 3 table models in 0 hours 0 minutes and 8.46 seconds (8.46s).
+17:27:43.328897 [info ] [Dummy-1   ]: 
+17:27:43.329590 [info ] [Dummy-1   ]: Completed successfully
+17:27:43.330106 [info ] [Dummy-1   ]: 
+17:27:43.330646 [info ] [Dummy-1   ]: Done. PASS=3 WARN=0 ERROR=0 SKIP=0 TOTAL=3
 
-## Step 8: View the Data Lineage
-
-1. In your workspace, click on the **"DAG"** tab (next to Query History)
-2. You'll see a visual representation of your data lineage:
-
-![Silver Layer DAG](images/5_dag.png)
-
-3. Click on any of the models to open up the corresponding worksheet, as well as additional information about the model.
+Command Execution Finished
+```
 
 ---
 
 ## Step 9: Run data tests
 
+Data tests are assertions you make about your models and other resources in your dbt project (for example, sources, seeds, and snapshots). When you run dbt test, dbt will tell you if each test in your project passes or fails. They are pushed down to Snowflake as `SELECT` statements run on the materialised model that returns a result-set that is evaluated against the assertion. These tests are defined in models & source yaml files in the `models/` folder.
+
+dbt provides a set of generic data tests (e.g. unique, nulls), or can be provided as a custom macro. The macro file `macros/test_singapore_geography_bounds.sql` is an example in this HOL - this macro looks for lat-long pairs that are outside of Singapore; we don't want any taxis swimming in the ocean!
+
 1. In your workspace, under the dbt command dropdown, select `Test`
 2. This time, we'll run tests on the entire project - click the **Run** ▶️ button
 
+**Expected Output:**
+
+```
+execute dbt project from workspace USER$.PUBLIC.apj_techup_fy26_dbt_hol args='test --target prod'
+
+10:50:28.949396 [info ] [Dummy-1   ]: Running with dbt=1.9.4
+10:50:29.023948 [error] [Dummy-1   ]:  adapter: Invalid profile: 'user' is a required property.
+10:50:29.323257 [info ] [Dummy-1   ]: Registered adapter: snowflake=1.9.2
+10:50:30.773296 [info ] [Dummy-1   ]: Found 9 models, 46 data tests, 4 sources, 477 macros
+10:50:30.779319 [info ] [Dummy-1   ]: 
+10:50:30.779988 [info ] [Dummy-1   ]: Concurrency: 1 threads (target='prod')
+10:50:30.780572 [info ] [Dummy-1   ]: 
+10:50:32.396371 [info ] [Thread-2 (]: 1 of 46 START test accepted_values_all_locations_location_type__hawker_centre__mrt_station_exit__tourist_attraction  [RUN]
+10:50:33.008903 [info ] [Thread-2 (]: 1 of 46 PASS accepted_values_all_locations_location_type__hawker_centre__mrt_station_exit__tourist_attraction  [PASS in 0.61s]
+
+...
+
+10:50:54.915750 [info ] [Thread-2 (]: 45 of 46 START test singapore_geography_bounds_taxi_availability_taxi_coords ... [RUN]
+10:50:55.359368 [warn ] [Thread-2 (]: 45 of 46 WARN 1 singapore_geography_bounds_taxi_availability_taxi_coords ....... [WARN 1 in 0.44s]
+10:50:55.361726 [info ] [Thread-2 (]: 46 of 46 START test singapore_geography_bounds_tourist_attractions_coords ...... [RUN]
+10:50:55.773601 [info ] [Thread-2 (]: 46 of 46 PASS singapore_geography_bounds_tourist_attractions_coords ............ [PASS in 0.41s]
+10:50:55.778771 [info ] [Dummy-1   ]: 
+10:50:55.779337 [info ] [Dummy-1   ]: Finished running 46 data tests in 0 hours 0 minutes and 25.00 seconds (25.00s).
+10:50:55.853746 [info ] [Dummy-1   ]: 
+10:50:55.854354 [info ] [Dummy-1   ]: Completed with 1 warning:
+10:50:55.854853 [info ] [Dummy-1   ]: 
+10:50:55.855514 [warn ] [Dummy-1   ]: Warning in test singapore_geography_bounds_taxi_availability_taxi_coords (models/silver/_schema.yml)
+10:50:55.856129 [warn ] [Dummy-1   ]: Got 1 result, configured to warn if != 0
+10:50:55.856623 [info ] [Dummy-1   ]: 
+10:50:55.857205 [info ] [Dummy-1   ]:   compiled code at /tmp/dbt/target/compiled/techup_dbt_hands_on_lab/models/silver/_schema.yml/singapore_geography_bounds_taxi_availability_taxi_coords.sql
+10:50:55.857776 [info ] [Dummy-1   ]: 
+10:50:55.858291 [info ] [Dummy-1   ]: Done. PASS=45 WARN=1 ERROR=0 SKIP=0 TOTAL=46
+```
 
 > **_NOTE:_** dbt also handily provides a `build` command - you may have already noticed this in the command dropdown. This will run models and tests under a single command, as well as other functions such as snapshots, seeds and UDFs, which we do not cover in this HOL. This is often run as a part of an automated refresh if the customer would prefer to run the entire end-to-end process without having to run multiple calls.
 
 ---
 
-## Step 10: Run as Dynamic Tables
+## Step 10: Convert models to Dynamic Tables
 
 Up until this point, all dbt models have been materialised as tables. In order to keep the silver and gold models fresh with new records arriving in the data share, a task needs to be run every minute; while this is well within Snowflake's capabilities, the overhead cost of running the dbt project will likely become a nuisance as the project scales out.
 
@@ -491,15 +563,15 @@ models:
       +on_configuration_change: apply
       +target_lag: downstream
       +refresh_mode: INCREMENTAL
-      +initialize: ON_CREATE
+      +initialize: ON_SCHEDULE
     gold:
       +materialized: dynamic_table
       +schema: DBT_HOL_GOLD
       +snowflake_warehouse: TECHUP25_WH
       +on_configuration_change: apply 
       +target_lag: '24 HOURS'
-      +refresh_mode: INCREMENTAL
-      +initialize: ON_CREATE
+      +refresh_mode: AUTO
+      +initialize: ON_SCHEDULE
 ```
 
 This will create all silver layer DTs with `target_lag` set to `DOWNSTREAM`, and all gold DTs with a default `target_lag` of 24 hours.
@@ -526,8 +598,9 @@ from {{ ref('taxi_availability_metadata') }}
 
 Now run the dbt project:
 
-1. From the dbt command dropdown, select `Build`
-2. Click the **Run** ▶️ button
+1. From the dbt command dropdown, select `Run`
+2. This time, tick the `Execute with defaults` checkbox in the dropdown
+3. Click the **Run** ▶️ button
 
 This should overwrite your existing models to DTs.
 
@@ -543,7 +616,7 @@ If you have been paying attention to the dbt execution logs, the dbt project has
 
    | Field | Value |
    |-------|-------|
-   | **Select location** | Database: `TECHUP` Schema: `PROJECTS` |
+   | **Select location** | Database: `TECHUP25` Schema: `PROJECTS` |
    | **Select or create dbt project** | `apj_techup_fy26_dbt_hol` |
    | **Enter Name** | `TECHUP_DBT_PROJECT` |
    | **Description** | `TechUP FY26 Singapore Taxi DBT project` |
@@ -553,6 +626,33 @@ If you have been paying attention to the dbt execution logs, the dbt project has
 4. Click "Deploy"
 
 ---
+
 ## 🎓 HOL Complete!
 
 If you've finished this in good time and you're bored, try writing your own models! The `models/*/_schema.yml` files make for some great context for Cursor :-)
+
+---
+
+## Addendum: Downsize WH, Pause / Resume DT refresh
+
+Downsize WH:
+
+```sql
+ALTER WAREHOUSE TECHUP25_WH SET WAREHOUSE_SIZE = 'XSMALL';
+```
+
+To keep all demo assets, but stop warehouse costs on refreshes:
+
+```sql
+ALTER DYNAMIC TABLE TECHUP25.DBT_HOL_GOLD.TAXI_COUNTS SUSPEND;
+ALTER DYNAMIC TABLE TECHUP25.DBT_HOL_GOLD.TOURIST_ATTRACTIONS_PROXIMITY SUSPEND;
+ALTER DYNAMIC TABLE TECHUP25.DBT_HOL_GOLD.TAXI_COUNTS_BY_LOCATION SUSPEND;
+```
+
+If you'd like to use this as a demo at another time, you can resume to materialize live data:
+
+```sql
+ALTER DYNAMIC TABLE TECHUP25.DBT_HOL_GOLD.TAXI_COUNTS RESUME;
+ALTER DYNAMIC TABLE TECHUP25.DBT_HOL_GOLD.TOURIST_ATTRACTIONS_PROXIMITY RESUME;
+ALTER DYNAMIC TABLE TECHUP25.DBT_HOL_GOLD.TAXI_COUNTS_BY_LOCATION RESUME;
+```
